@@ -5,33 +5,28 @@
 TradeTutor-MCP turns a market question into a controlled workflow:
 
 ```text
-Binance MCP market context
-        ↓
-Cornell Notes analysis
-        ↓
-Risk / trade plan
-        ↓
-Trade proposal
-        ↓
-Explicit user confirmation
-        ↓
-Authorized Binance MCP execution
-        ↓
-Trade journal / review
+MCP market context → Scan/Score/Alerts → Cornell analysis → Risk plan
+→ Portfolio Guardian → Trade proposal → Human confirmation
+→ Paper or authorized Binance MCP execution → Journal → Post-trade coach
 ```
 
 ## Current implementation
 
-- `src/runtime.py` orchestrates market context, Cornell analysis, account-aware proposal creation, and confirmed execution.
-- `src/binance_mcp.py` maps live spot market context to the published Binance market-data tool names and discovers account/order tools from the connected MCP server.
-- `tests/test_binance_mcp.py` verifies market-tool mapping and the confirmation gate.
-- `demo.py` remains a safe local demo and cannot place a real order.
+- `src/runtime.py` is the main orchestration boundary for scanning, analysis, risk checks, paper execution, capabilities, live confirmation, and post-trade review.
+- `src/binance_mcp.py` maps spot market context to Binance market-data tools and discovers account/order tools from the connected MCP server.
+- `src/analytics.py` provides transparent market scoring and watchlist ranking.
+- `src/alerts.py` detects price, volume, and liquidity warnings without placing trades.
+- `src/scanner.py` ranks supplied multi-symbol market observations.
+- `src/portfolio_guardian.py` enforces max risk, daily-loss, open-position, and kill-switch rules before proposals are created.
+- `src/paper_trading.py` provides an in-memory simulator that never calls Binance write tools.
+- `src/mcp_capabilities.py` reports discovered market/account/order capabilities without assuming permissions.
+- `src/journal_stats.py` calculates win rate, R-multiples, and recurring lessons from structured journal records.
+- `src/coach.py` compares an original thesis with a realized outcome and produces a review lesson.
+- `src/explain.py` produces a human-readable decision explanation.
 - No Binance API keys, signed REST order implementation, or credentials are stored in this repository.
-- Execution is blocked unless `confirmed=True` reaches the adapter.
+- Live execution remains blocked unless explicit confirmation reaches the adapter.
 
 ## Binance MCP market tools
-
-The adapter uses these Binance MCP tool names for spot market evidence:
 
 | Purpose | MCP tool |
 |---|---|
@@ -40,51 +35,18 @@ The adapter uses these Binance MCP tool names for spot market evidence:
 | Candles | `get_spot_kline_candlestick_data` |
 | 24h statistics | `get_spot_24hr_ticker_price_change_statistics` |
 
-These provide the raw observations used by the Cornell workflow. The application does not claim that raw market data is itself a trading recommendation.
-
-## Connect the real Binance MCP runtime
-
-The Binance MCP host/client remains responsible for authentication and transport. Inject two functions into `BinanceMCPAdapter`:
+## End-to-end runtime
 
 ```python
-from src.binance_mcp import BinanceMCPAdapter
-from src.runtime import TradeTutorRuntime
-
-
-def call_tool(tool_name, arguments):
-    # Delegate to your already-authorized Binance MCP client.
-    return your_mcp_client.call_tool(tool_name, arguments)
-
-
-def list_tools():
-    # Return MCP tool definitions with at least `name`, `description`, and
-    # `inputSchema` where available.
-    return your_mcp_client.list_tools()
-
-mcp = BinanceMCPAdapter(call_tool=call_tool, list_tools=list_tools)
 runtime = TradeTutorRuntime(mcp)
-```
 
-The adapter calls the four market tools above directly. Account and order tools are **discovered at runtime** from the connected Binance MCP server rather than guessed or hard-coded, because MCP tool names can differ between server/runtime versions.
+# 1. Scan supplied market observations; no trading occurs.
+ranked = runtime.scan(markets)
 
-## Required Track B execution sequence
-
-1. Call `runtime.analyze_market("BTCUSDT")` to retrieve live market evidence through Binance MCP.
-2. Build the Cornell analysis from that evidence.
-3. Call `runtime.create_proposal(...)` after the user has supplied/approved the intended risk parameters.
-4. Display the resulting symbol, side, quantity, entry, stop, target, risk/reward, and rationale.
-5. Ask for an explicit confirmation from the user.
-6. Only after confirmation call `runtime.execute_after_confirmation(proposal)`.
-7. Record the authorized execution response in the trade journal.
-
-The adapter's order discovery requires an MCP tool definition whose name/description identifies an order/trade operation and whose input schema exposes symbol, side, and quantity. If the connected MCP server does not expose a compatible write tool, TradeTutor stops instead of guessing an order endpoint.
-
-## Example integration shape
-
-```python
+# 2. Build evidence-backed Cornell analysis.
 analysis = runtime.analyze_market("BTCUSDT")
-print(analysis.cornell_markdown)
 
+# 3. Proposal creation is protected by Portfolio Guardian.
 proposal = runtime.create_proposal(
     "BTCUSDT",
     risk_percent=1.0,
@@ -95,12 +57,38 @@ proposal = runtime.create_proposal(
     rationale="User-approved setup rationale",
 )
 
-# Present proposal to user here. Do not auto-confirm.
+# 4A. Safe demo path: paper execution.
+runtime.paper_execute(proposal)
+
+# 4B. Live path: only after an explicit user confirmation.
 result = runtime.execute_after_confirmation(proposal)
-print(result)
+
+# 5. Post-trade review.
+review = runtime.review_trade(
+    thesis="Trend continuation",
+    expected="bullish",
+    outcome="bullish",
+    r_multiple=1.8,
+)
 ```
 
-**Important:** the example prices above are illustrative only. They are not a current BTC quote or a recommendation.
+The example prices are illustrative only and are not current quotes or recommendations.
+
+## Connect the real Binance MCP runtime
+
+The Binance MCP host/client remains responsible for authentication and transport. Inject an authorized tool caller and tool lister into `BinanceMCPAdapter`. The adapter discovers account and order capabilities at runtime rather than guessing private or changing write-tool names.
+
+If no compatible order-write capability is exposed, the adapter stops instead of inventing an endpoint.
+
+## Safety architecture
+
+1. Market data is evidence, not an automatic recommendation.
+2. Scanner and alerts are read-only.
+3. Portfolio Guardian is fail-closed for configured risk limits.
+4. Paper trading is completely separate from live execution.
+5. Live orders require explicit confirmation.
+6. Authentication/secrets remain outside the repository.
+7. Post-trade reviews describe outcomes and lessons; they do not guarantee future performance.
 
 ## Development
 
@@ -111,17 +99,11 @@ pytest
 python demo.py
 ```
 
-## Security
-
-- Never commit Binance API keys, secrets, passwords, seed phrases, or private keys.
-- Authentication and signing belong to the authorized Binance Agent OS/MCP environment.
-- Never bypass the confirmation gate.
-- Never present trading outcomes as guaranteed.
-- This is a hackathon prototype, not financial advice.
-
 ## Hackathon focus
 
-The project is designed around a visible Track B workflow: **MCP market data → structured reasoning → risk-controlled proposal → human confirmation → authorized MCP execution → journal**.
+The project now demonstrates a complete visible Track B story:
+
+**MCP market data → intelligent scanning → Cornell reasoning → explainable risk plan → portfolio protection → human confirmation → paper/live execution boundary → journal intelligence → post-trade coaching.**
 
 ## License
 
