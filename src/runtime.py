@@ -1,4 +1,4 @@
-"""Live-runtime workflow boundary for an authorized Binance MCP connection."""
+"""Live workflow boundary: Binance MCP -> analysis -> proposal -> confirmation -> execution."""
 
 from dataclasses import dataclass
 from typing import Any, Mapping
@@ -15,11 +15,7 @@ class AnalysisResult:
 
 
 class TradeTutorRuntime:
-    """Orchestrates MCP context -> analysis -> proposal -> confirmed execution.
-
-    The actual Binance tools remain outside this repository and are supplied by
-    the connected authorized MCP/Agent OS runtime.
-    """
+    """Orchestrate the human-in-the-loop trading workflow."""
 
     def __init__(self, mcp: BinanceMCPAdapter | None = None) -> None:
         self.mcp = mcp or BinanceMCPAdapter()
@@ -43,8 +39,35 @@ class TradeTutorRuntime:
             risk_points=risk_points,
             summary=summary,
         )
-        return AnalysisResult(symbol=symbol, cornell_markdown=analysis.to_markdown(), proposal=None)
+        return AnalysisResult(
+            symbol=symbol,
+            cornell_markdown=analysis.to_markdown(),
+            proposal=None,
+        )
+
+    def create_proposal(
+        self,
+        symbol: str,
+        *,
+        risk_percent: float,
+        side: str,
+        entry_price: float,
+        stop_price: float,
+        target_price: float,
+        rationale: str,
+    ) -> TradeProposal:
+        account = self.mcp.get_account_context()
+        balance = float(account["balance"])
+        plan = self.agent.create_trade_plan(
+            balance,
+            risk_percent,
+            side,
+            entry_price,
+            stop_price,
+            target_price,
+        )
+        return self.agent.prepare_proposal(symbol, plan, rationale)
 
     def execute_after_confirmation(self, proposal: TradeProposal) -> Mapping[str, Any]:
-        """Execute only when the caller explicitly confirms the proposal."""
+        """Execute only after the caller has explicitly confirmed the proposal."""
         return self.agent.execute(proposal, confirmed=True)
