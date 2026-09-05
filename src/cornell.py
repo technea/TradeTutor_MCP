@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Iterable
+from typing import Mapping
 
-VALID_DECISIONS = {"potential_setup", "wait", "no_trade"}
+
+DECISIONS = {"potential_setup", "wait", "no_trade"}
 
 
 @dataclass
@@ -15,55 +16,50 @@ class CornellAnalysis:
     summary: str = ""
 
     def __post_init__(self) -> None:
-        self.question = self.question.strip()
-        self.summary = self.summary.strip()
-        if not self.question:
+        if not self.question.strip():
             raise ValueError("question is required")
-        if self.decision not in VALID_DECISIONS:
-            raise ValueError(f"decision must be one of {sorted(VALID_DECISIONS)}")
-        if not self.summary:
+        if self.decision not in DECISIONS:
+            raise ValueError(f"decision must be one of {sorted(DECISIONS)}")
+        if not self.summary.strip():
             raise ValueError("summary is required")
 
     def to_markdown(self) -> str:
-        sections = [
-            ("Question", [self.question]),
-            ("Cues", self.cues),
-            ("Notes", self.notes),
-            ("Analysis", self.analysis),
-            ("Risk", self.risk),
-            ("Decision", [self.decision]),
-            ("Summary", [self.summary]),
-        ]
-        output = []
-        for title, items in sections:
-            output.append(f"## {title}")
-            if len(items) == 1:
-                output.append(items[0])
-            else:
-                output.extend(f"- {item}" for item in items) if items else output.append("- None recorded")
-            output.append("")
-        return "\n".join(output).strip() + "\n"
+        def bullets(items: list[str]) -> str:
+            return "\n".join(f"- {item}" for item in items) or "- None recorded"
 
-
-def _clean(items: Iterable[str] | None) -> list[str]:
-    return [str(item).strip() for item in (items or []) if str(item).strip()]
+        return "\n".join([
+            "## Question", self.question, "",
+            "## Cues", bullets(self.cues), "",
+            "## Notes", bullets(self.notes), "",
+            "## Analysis", bullets(self.analysis), "",
+            "## Risk", bullets(self.risk), "",
+            "## Decision", self.decision, "",
+            "## Summary", self.summary, "",
+        ])
 
 
 def build_cornell_analysis(
     question: str,
-    cues: Iterable[str] | None = None,
-    notes: Iterable[str] | None = None,
-    analysis: Iterable[str] | None = None,
-    risk: Iterable[str] | None = None,
+    market_context: Mapping[str, object],
+    *,
+    analysis_points: list[str] | None = None,
+    risk_points: list[str] | None = None,
     decision: str = "wait",
     summary: str = "",
 ) -> CornellAnalysis:
+    cues = []
+    notes = []
+    for key, value in market_context.items():
+        notes.append(f"{key}: {value}")
+        if key.lower() in {"trend", "momentum", "volume", "support", "resistance", "market_condition"}:
+            cues.append(f"{key}: {value}")
+
     return CornellAnalysis(
         question=question,
-        cues=_clean(cues),
-        notes=_clean(notes),
-        analysis=_clean(analysis),
-        risk=_clean(risk),
+        cues=cues,
+        notes=notes,
+        analysis=analysis_points or [],
+        risk=risk_points or [],
         decision=decision,
-        summary=summary,
+        summary=summary or "No final thesis supplied.",
     )

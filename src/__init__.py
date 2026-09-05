@@ -1,1 +1,1 @@
-"""TradeTutor-MCP core package."""
+"""TradeTutor-MCP application package."""
