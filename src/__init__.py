@@ -1,0 +1,1 @@
+"""TradeTutor-MCP core package."""
