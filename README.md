@@ -2,174 +2,88 @@
 
 > **Explainable, human-in-the-loop trading education and execution powered by Binance MCP.**
 
-TradeTutor-MCP is a Binance Agent OS hackathon project that turns a market question into a structured workflow using **Cornell Notes**, risk planning, explicit user confirmation, Binance MCP execution, and post-trade journaling.
-
-## 🎯 Vision
-
-Instead of simply asking an agent to *"buy BTC"*, TradeTutor makes the reasoning visible:
+TradeTutor-MCP turns a market question into a controlled workflow:
 
 ```text
-Market Research
-      ↓
-Cornell Notes Analysis
-      ↓
-Risk Assessment
-      ↓
-Trade Proposal
-      ↓
-User Confirmation
-      ↓
-Binance MCP Execution
-      ↓
-Trade Journal
-      ↓
-Post-Trade Review
+Binance MCP market context
+        ↓
+Cornell Notes analysis
+        ↓
+Risk / trade plan
+        ↓
+Trade proposal
+        ↓
+Explicit user confirmation
+        ↓
+Authorized Binance MCP execution
+        ↓
+Trade journal / review
 ```
 
-The goal is to make agent-assisted trading **structured, explainable, and controlled by the user**.
+## Current implementation
 
-## 🧠 Cornell Trading Framework
+- `src/runtime.py` orchestrates market context, Cornell analysis, account-aware proposal creation, and confirmed execution.
+- `src/binance_mcp.py` is a clean MCP adapter. It accepts an injected MCP `call_tool(tool_name, arguments)` function and configurable tool names.
+- `demo.py` remains a safe local demo and cannot place a real order.
+- No Binance API keys, signed REST order implementation, or credentials are stored in this repository.
+- Execution is blocked unless `confirmed=True` reaches the adapter.
 
-Every proposed setup is organized into six sections:
+## Connect the real Binance MCP runtime
 
-| Section | Purpose |
-|---|---|
-| **Question** | What trading decision are we evaluating? |
-| **Cues** | Trend, momentum, volume, support/resistance, market conditions |
-| **Notes** | Relevant market/account observations |
-| **Analysis** | Bullish and bearish evidence |
-| **Risk** | Entry, invalidation, position sizing, and risk/reward |
-| **Decision** | Potential setup, wait, or no-trade conclusion |
+The connected Binance Agent OS/MCP client should inject its tool caller into `BinanceMCPAdapter`:
 
-A short **Summary** captures the final thesis.
+```python
+from src.binance_mcp import BinanceMCPAdapter
+from src.runtime import TradeTutorRuntime
 
-## 🚀 MVP
 
-### 1. Market Scanner
-Collect relevant market information through the authorized Binance MCP environment.
+def call_tool(tool_name, arguments):
+    # Delegate to the already-authorized Binance MCP client.
+    return your_mcp_client.call_tool(tool_name, arguments)
 
-### 2. Cornell Analysis Engine
-Convert market observations into a consistent Cornell-style analysis.
+mcp = BinanceMCPAdapter(
+    call_tool,
+    market_tool="<actual-market-tool-name>",
+    account_tool="<actual-account-tool-name>",
+    order_tool="<actual-order-tool-name>",
+)
 
-### 3. Risk / Trade Plan
-Calculate proposed entry, invalidation, position size, risk amount, and risk/reward where sufficient inputs are available.
-
-### 4. Binance MCP Adapter
-Keep Binance execution behind a clean adapter boundary. Credentials are never stored in the repository.
-
-### 5. Human Confirmation
-The agent explains the proposed action and waits for explicit user confirmation before an execution-capable workflow proceeds.
-
-### 6. Trade Journal
-Record the original thesis, decision, execution details, outcome, mistakes, and lessons.
-
-## 📁 Project Structure
-
-```text
-TradeTutor_MCP/
-├── README.md
-├── requirements.txt
-├── .env.example
-├── .gitignore
-├── src/
-│   ├── __init__.py
-│   ├── agent.py
-│   ├── cornell.py
-│   ├── risk.py
-│   ├── journal.py
-│   └── binance_mcp.py
-├── notes/
-│   └── trade_journal.md
-└── tests/
-    └── test_cornell.py
+runtime = TradeTutorRuntime(mcp)
 ```
 
-## 🔐 Security Principles
+The exact tool names are intentionally not guessed: they must match the tools exposed by the connected Binance MCP server. They can also be supplied through `BINANCE_MCP_MARKET_TOOL`, `BINANCE_MCP_ACCOUNT_TOOL`, and `BINANCE_MCP_ORDER_TOOL`.
 
-- Never commit Binance API keys, secrets, passwords, seed phrases, or private keys.
-- Use the official Binance authorization / Agent OS / MCP connection for account access.
-- Keep execution behind explicit authorization and user confirmation.
-- Never present trading outcomes as guaranteed.
-- This project is a hackathon prototype and **not financial advice**.
+### Required execution sequence
 
-## 🛠️ Local Development
+1. Request market context through the authorized MCP tool.
+2. Build Cornell analysis.
+3. Fetch account context when sizing a proposal.
+4. Present the trade proposal to the user.
+5. Obtain explicit confirmation.
+6. Only then call `execute_after_confirmation()`.
+7. Record the result in the journal.
 
-Create a virtual environment:
+## Development
 
 ```bash
 python -m venv .venv
-```
-
-Activate it and install dependencies:
-
-```bash
 pip install -r requirements.txt
-```
-
-Run tests:
-
-```bash
 pytest
+python demo.py
 ```
 
-## 🔌 Binance MCP Integration
+## Security
 
-TradeTutor does not hard-code Binance credentials or implement a fake trading endpoint. The `binance_mcp.py` module provides the application boundary for the authorized Binance MCP environment.
+- Never commit Binance API keys, secrets, passwords, seed phrases, or private keys.
+- Authentication and signing belong to the authorized Binance Agent OS/MCP environment.
+- Never bypass the confirmation gate.
+- Never present trading outcomes as guaranteed.
+- This is a hackathon prototype, not financial advice.
 
-The intended runtime is:
+## Hackathon focus
 
-```text
-User
-  ↓
-TradeTutor Agent
-  ↓
-Authorized Binance MCP
-  ↓
-Binance capabilities
-  ↓
-Analysis / Proposal / Confirmation
-  ↓
-Authorized execution
-```
+The MVP demonstrates a transparent, human-in-the-loop trading workflow rather than a black-box "buy/sell" command. The next integration step is to inject the real Binance MCP client and map its currently exposed market, account, and order tool names into the adapter.
 
-## 🧪 Example User Flow
-
-**User:**
-
-> Analyze BTC/USDT and tell me whether there is a reasonable setup.
-
-**TradeTutor:**
-
-1. Collects permitted market information.
-2. Builds Cornell Notes.
-3. Separates bullish and bearish evidence.
-4. Defines invalidation and risk parameters.
-5. Produces a trade proposal or recommends waiting.
-6. Requests explicit confirmation before an execution-capable action.
-7. Records the decision in the journal.
-
-## 📊 Post-Trade Review
-
-After a completed trade, TradeTutor can compare:
-
-- Original thesis
-- Planned setup
-- Actual execution
-- Market outcome
-- What went well
-- What went wrong
-- Lessons for the next setup
-
-This creates a feedback loop rather than treating each trade as an isolated action.
-
-## 🏆 Hackathon Focus
-
-The first implementation target is a **working MCP trading workflow**. Once the core workflow is stable, the project can be extended with richer Agent OS capabilities and a polished demonstration.
-
-## ⚠️ Disclaimer
-
-TradeTutor-MCP is an experimental hackathon project for educational and demonstration purposes. It does not provide financial advice, guarantee profits, or eliminate trading risk. Users remain responsible for their decisions and should independently evaluate any trade before authorizing execution.
-
-## 📄 License
+## License
 
 MIT
