@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeTutor — Live Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0D0B;
+    --panel:#10140F;
+    --line:#1F2A21;
+    --text:#E8ECEA;
+    --muted:#7C8A80;
+    --accent:#00FF88;
+    --accent-dim:#0B4A2C;
+    --warn:#F2B84B;
+    --bad:#FF5C5C;
+    --mono:'JetBrains Mono',monospace;
+    --sans:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{min-height:100vh;}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 24px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#0D110E,#0A0D0B);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .brand-name{font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:0.02em;}
+  .brand-sub{font-size:11px;color:var(--muted);margin-left:8px;}
+  .status{font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+  .status.ok{color:var(--accent);}
+  .status.err{color:var(--bad);}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 24px 60px;}
+
+  .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;}
+  @media(max-width:880px){.grid{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--line);
+    padding:18px 18px 16px;position:relative;
+  }
+  .panel h2{
+    font-family:var(--mono);font-size:12px;font-weight:500;
+    color:var(--muted);margin:0 0 14px;letter-spacing:.03em;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .panel h2 .tag{color:var(--accent);}
+
+  .ticker-row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line);}
+  .ticker-row:last-child{border-bottom:none;}
+  .ticker-sym{font-family:var(--mono);font-weight:700;font-size:14px;}
+  .ticker-price{font-family:var(--mono);font-size:15px;}
+  .ticker-chg{font-family:var(--mono);font-size:12px;padding:2px 6px;}
+  .up{color:var(--accent);}
+  .down{color:var(--bad);}
+
+  .score-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .score-row:last-child{border-bottom:none;}
+  .score-sym{font-family:var(--mono);font-weight:700;width:90px;}
+  .score-bar-track{flex:1;height:6px;background:var(--line);position:relative;}
+  .score-bar-fill{height:100%;position:absolute;top:0;}
+  .score-val{font-family:var(--mono);width:120px;text-align:right;font-size:12px;}
+
+  .label-bull{color:var(--accent);}
+  .label-bear{color:var(--bad);}
+  .label-neutral{color:var(--muted);}
+
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);}
+  input{
+    width:100%;background:#080B08;border:1px solid var(--line);color:var(--text);
+    padding:8px 10px;font-family:var(--mono);font-size:13px;
+  }
+  input:focus{outline:none;border-color:var(--accent);}
+
+  .btn{
+    background:var(--accent);color:#04120A;border:none;
+    font-family:var(--mono);font-weight:700;font-size:12px;
+    padding:10px 16px;cursor:pointer;letter-spacing:.02em;
+    width:100%;margin-top:6px;
+  }
+  .btn:hover{background:#33FFA3;}
+  .btn.secondary{background:transparent;border:1px solid var(--line);color:var(--text);}
+  .btn.secondary:hover{border-color:var(--muted);}
+  .btn.danger{background:var(--bad);color:#1a0000;}
+
+  .result-box{
+    margin-top:12px;padding:12px;background:#080B08;border-left:3px solid var(--line);
+    font-family:var(--mono);font-size:12px;line-height:1.7;white-space:pre-wrap;
+  }
+  .result-box.allow{border-left-color:var(--accent);}
+  .result-box.block{border-left-color:var(--bad);}
+
+  .cornell-section{margin-bottom:14px;}
+  .cornell-section h3{
+    font-family:var(--mono);font-size:11px;color:var(--accent);
+    margin:0 0 6px;letter-spacing:.03em;
+  }
+  .cornell-section ul{margin:0;padding-left:18px;font-size:13px;line-height:1.6;}
+  .cornell-section p{margin:0;font-size:13px;line-height:1.6;}
+
+  .gate-log{font-family:var(--mono);font-size:12px;line-height:1.9;}
+  .gate-log .ok-line{color:var(--accent);}
+  .gate-log .bad-line{color:var(--bad);}
+  .gate-log .muted-line{color:var(--muted);}
+
+  .footer-note{
+    margin-top:30px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:11px;color:var(--muted);font-family:var(--mono);line-height:1.6;
+  }
+
+  .full-span{grid-column:1/-1;}
+
+  select{
+    width:100%;background:#080B08;border:1px solid var(--line);color:var(--text);
+    padding:8px 10px;font-family:var(--mono);font-size:13px;
+  }
+
+  .loading{color:var(--muted);font-family:var(--mono);font-size:12px;}
+
+  /* Interactive Q&A Styles */
+  .qa-presets{
+    display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;
+  }
+  .chip{
+    background:#141D17;border:1px solid var(--line);color:var(--text);
+    padding:6px 12px;font-family:var(--mono);font-size:11px;border-radius:4px;
+    cursor:pointer;transition:all 0.15s ease;display:inline-flex;align-items:center;gap:6px;
+  }
+  .chip:hover{
+    border-color:var(--accent);color:var(--accent);background:#0D241A;
+  }
+  .qa-input-box{
+    display:flex;gap:10px;margin-bottom:14px;align-items:stretch;
+  }
+  .qa-input-box input{
+    flex:1;background:#080B08;border:1px solid var(--line);color:var(--text);
+    padding:10px 12px;font-family:var(--mono);font-size:13px;
+  }
+  .qa-input-box input:focus{
+    outline:none;border-color:var(--accent);
+  }
+  .qa-submit-btn{
+    width:auto;padding:0 20px;white-space:nowrap;margin-top:0;
+  }
+  .qa-option-row{
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;
+    font-size:11px;font-family:var(--mono);color:var(--muted);
+  }
+  .qa-toggle-label{
+    display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;
+  }
+  .qa-toggle-label input{
+    width:auto;margin:0;cursor:pointer;
+  }
+  .qa-history-title{
+    font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:20px;margin-bottom:8px;
+    display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:12px;
+  }
+  .qa-card{
+    background:#0B0F0C;border:1px solid var(--line);border-left:3px solid var(--accent);
+    padding:16px;margin-bottom:14px;animation:fadeIn 0.2s ease-in;
+  }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .qa-card-header{
+    display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;
+    border-bottom:1px dashed var(--line);padding-bottom:8px;
+  }
+  .qa-q-text{
+    font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);
+  }
+  .qa-meta{
+    font-family:var(--mono);font-size:10px;color:var(--muted);
+  }
+  .qa-badge{
+    display:inline-block;padding:2px 6px;border-radius:2px;font-size:10px;font-family:var(--mono);
+    text-transform:uppercase;font-weight:700;
+  }
+  .badge-market{background:#0C3523;color:var(--accent);border:1px solid var(--accent-dim);}
+  .badge-risk{background:#3B2A0A;color:var(--warn);border:1px solid #735314;}
+  .badge-concept{background:#17223B;color:#70A5FF;border:1px solid #20355E;}
+  .badge-thesis{background:#3B1217;color:var(--bad);border:1px solid #6E1B24;}
+  .followup-wrap{
+    margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  }
+  .followup-label{
+    font-size:10px;font-family:var(--mono);color:var(--muted);
+  }
+  .history-item{
+    padding:8px 10px;border-bottom:1px dashed var(--line);font-family:var(--mono);font-size:11px;
+    display:flex;justify-content:space-between;align-items:center;cursor:pointer;
+  }
+  .history-item:hover{background:#101712;}
+  .history-q{color:var(--text);}
+  .history-time{color:var(--muted);font-size:10px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-dot"></div>
+    <div class="brand-name">TRADETUTOR</div>
+    <div class="brand-sub">explainable · human-in-the-loop · Binance MCP</div>
+  </div>
+  <div class="status ok" id="connStatus">● LIVE DATA</div>
+</div>
+
+<div class="wrap">
+
+  <div class="grid">
+
+    <!-- Live Prices -->
+    <div class="panel">
+      <h2>Live Market <span class="tag" id="priceUpdated">loading…</span></h2>
+      <div id="priceList"><div class="loading">Fetching live prices from Binance…</div></div>
+    </div>
+
+    <!-- Scanner -->
+    <div class="panel">
+      <h2>Explainable Scanner <span class="tag">score → bias</span></h2>
+      <div id="scannerList"><div class="loading">Scoring live market data…</div></div>
+    </div>
+
+    <!-- Cornell Analysis -->
+    <div class="panel full-span">
+      <h2>Cornell Analysis <span class="tag" id="cornellSym">BTCUSDT</span></h2>
+      <div id="cornellBox"><div class="loading">Building structured analysis…</div></div>
+    </div>
+
+    <!-- Interactive Q&A / Ask TradeTutor AI -->
+    <div class="panel full-span" id="qaSection">
+      <h2>Ask TradeTutor AI <span class="tag">interactive education &amp; live setup analysis</span></h2>
+      
+      <div class="qa-presets">
+        <div class="chip" onclick="askPreset('Is BTC bullish or bearish right now?')">⚡ Is BTC bullish right now?</div>
+        <div class="chip" onclick="askPreset('What are the top market rank and trending tokens?')">🔥 Market Rank &amp; Trending</div>
+        <div class="chip" onclick="askPreset('How do I calculate position size and risk?')">🛡️ How to size positions</div>
+        <div class="chip" onclick="askPreset('Check liquidity & order book for ETHUSDT')">📊 Check ETH liquidity</div>
+        <div class="chip" onclick="askPreset('Evaluate thesis: Long BTC entry 74500 stop 73800 target 77000')">💡 Evaluate trade thesis</div>
+        <div class="chip" onclick="askPreset('What is an invalidation level vs a stop-loss?')">❓ Invalidation vs Stop-loss</div>
+        <div class="chip" onclick="askPreset('How does the Portfolio Guardian protect me?')">🛡️ Portfolio Guardian rules</div>
+      </div>
+
+      <div class="qa-option-row">
+        <label class="qa-toggle-label">
+          <input type="checkbox" id="attachLiveContext" checked>
+          <span>Attach real-time Binance prices &amp; scanner score to query</span>
+        </label>
+        <span id="qaStatus" class="loading">Ready for questions</span>
+      </div>
+
+      <div class="qa-input-box">
+        <input type="text" id="qaInput" placeholder="Ask a trading question or paste a thesis (e.g. 'Should I trade BNB right now?' or 'Entry 74000 stop 73000 target 77000')..." onkeypress="handleQaKeyPress(event)">
+        <button class="btn qa-submit-btn" onclick="submitQuestion()">Ask Tutor</button>
+      </div>
+
+      <div id="qaAnswerOutput">
+        <div class="result-box" style="border-left-color: var(--accent);">
+<span class="muted-line">// Welcome to TradeTutor Q&amp;A! Select a preset chip above or type any question to get an explainable breakdown using Cornell Notes framework, live market scanner metrics, and Portfolio Guardian risk safety.</span>
+        </div>
+      </div>
+
+      <div class="qa-history-title">
+        <span>SESSION QUESTION HISTORY (<span id="qaHistoryCount">0</span>)</span>
+        <button class="btn secondary" style="width:auto;padding:2px 8px;font-size:10px;margin:0;" onclick="clearQaHistory()">Clear History</button>
+      </div>
+      <div id="qaHistoryList">
+        <div class="loading" style="font-size:11px;">No questions asked yet in this session.</div>
+      </div>
+    </div>
+
+    <!-- Risk Planner -->
+    <div class="panel">
+      <h2>Risk Planner + Portfolio Guardian</h2>
+      <div class="field-row">
+        <div>
+          <label>Account Balance (USDT)</label>
+          <input type="number" id="rBalance" value="12.78" step="0.01">
+        </div>
+        <div>
+          <label>Risk %</label>
+          <input type="number" id="rRisk" value="1" step="0.1">
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <label>Entry Price</label>
+          <input type="number" id="rEntry" value="747.50" step="0.01">
+        </div>
+        <div>
+          <label>Stop Price</label>
+          <input type="number" id="rStop" value="740.24" step="0.01">
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <label>Target Price</label>
+          <input type="number" id="rTarget" value="780.64" step="0.01">
+        </div>
+        <div>
+          <label>Max Risk % (Guardian)</label>
+          <input type="number" id="rMaxRisk" value="1" step="0.1">
+        </div>
+      </div>
+      <button class="btn" onclick="runRiskPlan()">Calculate + Check Guardian</button>
+      <div id="riskResult"></div>
+    </div>
+
+    <!-- Liquidity Checker -->
+    <div class="panel">
+      <h2>Liquidity Risk Check</h2>
+      <div class="field-row">
+        <div>
+          <label>Symbol</label>
+          <select id="liqSymbol">
+            <option value="BNBUSDT">BNBUSDT</option>
+            <option value="BTCUSDT">BTCUSDT</option>
+            <option value="ETHUSDT">ETHUSDT</option>
+          </select>
+        </div>
+        <div>
+          <label>Intended Trade Size (USDT)</label>
+          <input type="number" id="liqTrade" value="5" step="0.01">
+        </div>
+      </div>
+      <button class="btn secondary" onclick="runLiquidityCheck()">Check Live Order Book</button>
+      <div id="liqResult"></div>
+    </div>
+
+    <!-- Confirmation Gate -->
+    <div class="panel full-span">
+      <h2>Human Confirmation Gate <span class="tag">safety proof</span></h2>
+      <div class="field-row" style="grid-template-columns:1fr 1fr 1fr;">
+        <button class="btn secondary" onclick="attemptUnconfirmed()">Attempt Order — No Confirmation</button>
+        <button class="btn" onclick="attemptConfirmed()">Attempt Order — With Confirmation</button>
+        <button class="btn danger" onclick="clearLog()">Clear Log</button>
+      </div>
+      <div class="result-box" id="gateLog" style="margin-top:14px;">
+        <span class="muted-line">// Awaiting action…</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    TRADETUTOR-MCP — Research → Explain → Risk-check → Confirm → Execute → Journal → Learn.<br>
+    Live prices and order book pulled directly from Binance's public REST API (no auth, read-only). Scanner, Cornell
+    analysis, risk math, and safety gates mirror the logic in this project's Python codebase (src/analytics.py,
+    src/cornell.py, src/risk.py, src/portfolio_guardian.py, src/binance_mcp.py). This dashboard is a research and
+    education tool — not financial advice. Nothing here places a real order.
+  </div>
+
+</div>
+
+<script>
+const SYMBOLS = ["BTCUSDT","ETHUSDT","BNBUSDT"];
+let latestTickers = {};
+
+function fmtUsd(n){
+  const num = parseFloat(n);
+  if(isNaN(num)) return "—";
+  return num >= 1000 ? num.toLocaleString(undefined,{maximumFractionDigits:2}) : num.toFixed(num<10?4:2);
+}
+
+async function fetchTickers(){
+  try{
+    const results = await Promise.all(SYMBOLS.map(s=>
+      fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${s}`).then(r=>r.json())
+    ));
+    results.forEach((r,i)=> latestTickers[SYMBOLS[i]] = r);
+    renderPrices();
+    runScanner();
+    runCornell();
+    document.getElementById('connStatus').textContent = '● LIVE DATA';
+    document.getElementById('connStatus').className = 'status ok';
+  }catch(e){
+    document.getElementById('connStatus').textContent = '● OFFLINE — retrying';
+    document.getElementById('connStatus').className = 'status err';
+    document.getElementById('priceList').innerHTML = `<div class="loading">Could not reach Binance public API: ${e.message}</div>`;
+  }
+}
+
+function renderPrices(){
+  const el = document.getElementById('priceList');
+  el.innerHTML = '';
+  SYMBOLS.forEach(sym=>{
+    const t = latestTickers[sym];
+    if(!t) return;
+    const chg = parseFloat(t.priceChangePercent);
+    const dir = chg >= 0 ? 'up' : 'down';
+    el.innerHTML += `
+      <div class="ticker-row">
+        <div class="ticker-sym">${sym}</div>
+        <div class="ticker-price">$${fmtUsd(t.lastPrice)}</div>
+        <div class="ticker-chg ${dir}">${chg>=0?'+':''}${chg.toFixed(2)}%</div>
+      </div>`;
+  });
+  document.getElementById('priceUpdated').textContent = 'updated ' + new Date().toLocaleTimeString();
+}
+
+// Mirrors src/analytics.py score_market()
+function scoreMarket(obs){
+  let score = 0;
+  const bullish = [], bearish = [], warnings = [];
+  const {change=0, volumeRatio=1, spread=0, trend=0, volatility=0} = obs;
+
+  if(change >= 1.0){ score += 2; bullish.push(`24h change is positive (${change.toFixed(2)}%)`); }
+  else if(change <= -1.0){ score -= 2; bearish.push(`24h change is negative (${change.toFixed(2)}%)`); }
+
+  if(volumeRatio >= 1.25){
+    score += change >= 0 ? 1 : -1;
+    (change>=0?bullish:bearish).push(`volume is elevated (${volumeRatio.toFixed(2)}x baseline)`);
+  }
+  if(trend >= 0.7){
+    score += change >= 0 ? 1 : -1;
+    (change>=0?bullish:bearish).push('trend strength is high');
+  }
+  if(spread > 0.20){ warnings.push(`wide bid/ask spread (${spread.toFixed(3)}%)`); score -= 1; }
+  if(volatility >= 6.0){ warnings.push(`high observed volatility (${volatility.toFixed(2)}%)`); }
+
+  let label = 'neutral', regime = 'mixed_or_range';
+  if(score >= 3){ label='bullish_bias'; regime='trend_up'; }
+  else if(score <= -3){ label='bearish_bias'; regime='trend_down'; }
+
+  const confidence = (Math.abs(score) >= 4 && warnings.length===0) ? 'high' : (Math.abs(score) >= 2 ? 'medium':'low');
+  return {score, label, regime, confidence, bullish, bearish, warnings};
+}
+
+function tickerToObs(t){
+  const change = parseFloat(t.priceChangePercent);
+  const high = parseFloat(t.highPrice), low = parseFloat(t.lowPrice), last = parseFloat(t.lastPrice);
+  const bid = parseFloat(t.bidPrice), ask = parseFloat(t.askPrice);
+  const spread = ask>0 ? (ask-bid)/ask*100 : 0;
+  const volatility = last>0 ? (high-low)/last*100 : 0;
+  let trend = 0;
+  if(high>low){
+    const pos = (last-low)/(high-low);
+    trend = change>=0 ? Math.min(1,Math.max(0,pos)) : Math.min(1,Math.max(0,1-pos));
+  }
+  return {change, volumeRatio:1.0, spread, trend, volatility};
+}
+
+function runScanner(){
+  const el = document.getElementById('scannerList');
+  el.innerHTML = '';
+  const scored = SYMBOLS.map(sym=>({sym, ...scoreMarket(tickerToObs(latestTickers[sym]))}))
+                        .sort((a,b)=> Math.abs(b.score)-Math.abs(a.score));
+
+  scored.forEach(s=>{
+    const pct = Math.min(100, Math.abs(s.score)*20);
+    const color = s.label==='bullish_bias' ? 'var(--accent)' : s.label==='bearish_bias' ? 'var(--bad)' : 'var(--muted)';
+    const labelClass = s.label==='bullish_bias'?'label-bull':s.label==='bearish_bias'?'label-bear':'label-neutral';
+    el.innerHTML += `
+      <div class="score-row">
+        <div class="score-sym">${s.sym}</div>
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+        <div class="score-val ${labelClass}">${s.score>0?'+':''}${s.score} · ${s.label}</div>
+      </div>`;
+  });
+}
+
+function runCornell(){
+  const sym = 'BTCUSDT';
+  const t = latestTickers[sym];
+  if(!t) return;
+  const obs = tickerToObs(t);
+  const scored = scoreMarket(obs);
+  const decision = scored.label === 'neutral' ? 'wait' : (scored.label==='bullish_bias' ? 'potential_setup' : 'wait');
+
+  const el = document.getElementById('cornellBox');
+  el.innerHTML = `
+    <div class="cornell-section"><h3>Question</h3><p>Should ${sym} be considered for a trade?</p></div>
+    <div class="cornell-section"><h3>Notes (live)</h3>
+      <ul>
+        <li>price: $${fmtUsd(t.lastPrice)}</li>
+        <li>24h change: ${parseFloat(t.priceChangePercent).toFixed(2)}%</li>
+        <li>24h range: $${fmtUsd(t.lowPrice)} – $${fmtUsd(t.highPrice)}</li>
+      </ul>
+    </div>
+    <div class="cornell-section"><h3>Analysis</h3>
+      <ul>
+        <li>Scanner score: ${scored.score} (${scored.label}, ${scored.confidence} confidence)</li>
+        ${[...scored.bullish, ...scored.bearish].map(e=>`<li>${e}</li>`).join('') || '<li>No strong directional evidence present.</li>'}
+      </ul>
+    </div>
+    <div class="cornell-section"><h3>Risk</h3>
+      <ul>
+        <li>No position should be opened without a clear breakout/breakdown confirmation.</li>
+        <li>If entering, define invalidation below the recent 24h low.</li>
+      </ul>
+    </div>
+    <div class="cornell-section"><h3>Decision</h3><p style="color:var(--accent);font-family:var(--mono);">${decision}</p></div>
+    <div class="cornell-section"><h3>Summary</h3><p>Live ${sym} data currently shows a ${scored.label.replace('_',' ')} with ${scored.confidence} confidence. This is not a guarantee — treat it as one input among several.</p></div>
+  `;
+}
+
+// Mirrors src/risk.py + src/portfolio_guardian.py
+function runRiskPlan(){
+  const balance = parseFloat(document.getElementById('rBalance').value);
+  const riskPct = parseFloat(document.getElementById('rRisk').value);
+  const entry = parseFloat(document.getElementById('rEntry').value);
+  const stop = parseFloat(document.getElementById('rStop').value);
+  const target = parseFloat(document.getElementById('rTarget').value);
+  const maxRisk = parseFloat(document.getElementById('rMaxRisk').value);
+
+  const box = document.getElementById('riskResult');
+  const reasons = [];
+  if(riskPct <= 0 || riskPct > maxRisk) reasons.push(`risk ${riskPct.toFixed(2)}% exceeds max ${maxRisk.toFixed(2)}%`);
+  if(balance <= 0) reasons.push('account equity must be positive');
+
+  if(reasons.length){
+    box.innerHTML = `<div class="result-box block">GUARDIAN: BLOCKED\n${reasons.map(r=>'✗ '+r).join('\n')}</div>`;
+    return;
+  }
+
+  const riskAmount = balance * riskPct / 100;
+  const positionSize = riskAmount / Math.abs(entry - stop);
+  const rr = Math.abs(target - entry) / Math.abs(entry - stop);
+
+  box.innerHTML = `<div class="result-box allow">GUARDIAN: ALLOWED ✓
+
+Risk amount:     $${riskAmount.toFixed(4)}
+Position size:   ${positionSize.toFixed(6)} units
+Risk/Reward:     ${rr.toFixed(2)}R
+Entry → Stop → Target:  ${entry} → ${stop} → ${target}</div>`;
+}
+
+// Mirrors src/liquidity.py, using live public order book depth
+async function runLiquidityCheck(){
+  const sym = document.getElementById('liqSymbol').value;
+  const tradeSize = parseFloat(document.getElementById('liqTrade').value);
+  const box = document.getElementById('liqResult');
+  box.innerHTML = `<div class="loading">Fetching live order book for ${sym}…</div>`;
+
+  try{
+    const res = await fetch(`https://api.binance.com/api/v3/depth?symbol=${sym}&limit=10`);
+    const book = await res.json();
+    const bidDepth = book.bids.reduce((sum,[p,q])=> sum + parseFloat(p)*parseFloat(q), 0);
+    const askDepth = book.asks.reduce((sum,[p,q])=> sum + parseFloat(p)*parseFloat(q), 0);
+    const bestBid = parseFloat(book.bids[0][0]), bestAsk = parseFloat(book.asks[0][0]);
+    const spread = (bestAsk-bestBid)/bestAsk*100;
+    const total = bidDepth+askDepth;
+    const imbalance = total>0 ? (bidDepth-askDepth)/total : 0;
+
+    const warnings = [];
+    if(spread > 0.20) warnings.push(`wide bid/ask spread (${spread.toFixed(3)}%)`);
+    if(Math.abs(imbalance) > 0.5) warnings.push(`order book skewed toward the ${imbalance>0?'bid':'ask'} side`);
+    if(tradeSize > askDepth/5) warnings.push(`trade size ($${tradeSize}) large relative to visible depth ($${askDepth.toFixed(2)}); expect slippage`);
+
+    const riskLevel = warnings.length >= 2 ? 'HIGH' : warnings.length === 1 ? 'MEDIUM' : 'LOW';
+    const cls = riskLevel === 'LOW' ? 'allow' : 'block';
+
+    box.innerHTML = `<div class="result-box ${cls}">LIQUIDITY RISK: ${riskLevel}
+
+Spread:          ${spread.toFixed(4)}%
+Bid depth:       $${bidDepth.toFixed(2)}
+Ask depth:       $${askDepth.toFixed(2)}
+Imbalance:       ${(imbalance*100).toFixed(1)}%
+${warnings.length ? '\n' + warnings.map(w=>'⚠ '+w).join('\n') : '\n✓ No warnings — healthy liquidity for this trade size.'}</div>`;
+  }catch(e){
+    box.innerHTML = `<div class="result-box block">Could not fetch live order book: ${e.message}</div>`;
+  }
+}
+
+function logLine(text, cls){
+  const log = document.getElementById('gateLog');
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = text;
+  if(log.querySelector('.muted-line')) log.innerHTML = '';
+  log.appendChild(line);
+}
+
+function clearLog(){
+  document.getElementById('gateLog').innerHTML = '<span class="muted-line">// Awaiting action…</span>';
+}
+
+function attemptUnconfirmed(){
+  logLine('> execute_confirmed_order(proposal, confirmed=False)', 'muted-line');
+  logLine('✗ BLOCKED — PermissionError: Explicit user confirmation is required before execution.', 'bad-line');
+}
+
+function attemptConfirmed(){
+  logLine('> execute_confirmed_order(proposal, confirmed=True)', 'muted-line');
+  logLine('✓ ALLOWED — order would be forwarded to the authorized Binance MCP session.', 'ok-line');
+  logLine('  (This dashboard never sends a real order — this only demonstrates the gate logic.)', 'muted-line');
+}
+
+// Interactive Q&A Engine
+let qaHistoryArray = [];
+
+function handleQaKeyPress(e){
+  if(e.key === 'Enter'){
+    submitQuestion();
+  }
+}
+
+function askPreset(text){
+  document.getElementById('qaInput').value = text;
+  submitQuestion();
+}
+
+function submitQuestion(){
+  const inputEl = document.getElementById('qaInput');
+  const query = inputEl.value.trim();
+  if(!query) return;
+
+  const attachContext = document.getElementById('attachLiveContext').checked;
+  const statusEl = document.getElementById('qaStatus');
+  statusEl.textContent = 'Analyzing question…';
+  statusEl.className = 'loading';
+
+  setTimeout(()=>{
+    const response = processQaQuery(query, attachContext);
+    renderQaResponse(response);
+    
+    // Add to history
+    qaHistoryArray.unshift({
+      query: query,
+      timestamp: new Date().toLocaleTimeString(),
+      category: response.category
+    });
+    renderQaHistory();
+
+    statusEl.textContent = 'Answer generated';
+    statusEl.className = 'status ok';
+    inputEl.value = '';
+  }, 250);
+}
+
+function clearQaHistory(){
+  qaHistoryArray = [];
+  renderQaHistory();
+}
+
+function renderQaHistory(){
+  const listEl = document.getElementById('qaHistoryList');
+  const countEl = document.getElementById('qaHistoryCount');
+  countEl.textContent = qaHistoryArray.length;
+
+  if(qaHistoryArray.length === 0){
+    listEl.innerHTML = '<div class="loading" style="font-size:11px;">No questions asked yet in this session.</div>';
+    return;
+  }
+
+  listEl.innerHTML = qaHistoryArray.map(item => `
+    <div class="history-item" onclick="askPreset('${item.query.replace(/'/g, "\\'")}')">
+      <span class="history-q">❓ ${escapeHtml(item.query)}</span>
+      <span class="history-time">${item.timestamp}</span>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(str){
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function processQaQuery(query, attachContext){
+  const q = query.toLowerCase();
+  
+  // 1. Trade Thesis Check (numbers for entry/stop/target or long/short)
+  const numbers = q.match(/\b\d+(\.\d+)?\b/g);
+  if((q.includes('thesis') || q.includes('setup') || q.includes('buy') || q.includes('sell') || q.includes('long') || q.includes('short') || q.includes('entry')) && numbers && numbers.length >= 2){
+    return evaluateTradeThesis(query, numbers, q);
+  }
+
+  // 2. Market Rank & Leaderboard Query
+  if(q.includes('rank') || q.includes('trending') || q.includes('hype') || q.includes('inflow') || q.includes('leaderboard') || q.includes('top tokens') || q.includes('pnl')){
+    return answerMarketRankQuery(query, q);
+  }
+
+  // 3. Live Ticker / Market Status Query
+  if(q.includes('btc') || q.includes('eth') || q.includes('bnb') || q.includes('bullish') || q.includes('bearish') || q.includes('market') || q.includes('bias') || q.includes('trend')){
+    return answerLiveMarketQuery(query, q, attachContext);
+  }
+
+  // 3. Liquidity & Order Book Depth Query
+  if(q.includes('liquidity') || q.includes('order book') || q.includes('depth') || q.includes('spread') || q.includes('slippage') || q.includes('book')){
+    return answerLiquidityQuery(query, q);
+  }
+
+  // 4. Position Sizing & Risk Management Query
+  if(q.includes('risk') || q.includes('position') || q.includes('size') || q.includes('sizing') || q.includes('balance') || q.includes('stop loss') || q.includes('stop-loss') || q.includes('invalidation') || q.includes('guardian')){
+    return answerRiskQuery(query, q);
+  }
+
+  // 5. Cornell Framework Query
+  if(q.includes('cornell') || q.includes('framework') || q.includes('notes') || q.includes('how tradetutor works')){
+    return answerCornellQuery(query, q);
+  }
+
+  // 6. Default Educational Q&A Responder
+  return answerGeneralQuery(query, q);
+}
+
+function evaluateTradeThesis(query, numbers, q){
+  const nums = numbers.map(n => parseFloat(n));
+  let entry = nums[0], stop = nums[1], target = nums[2] || (entry * 1.05);
+  if(stop > entry && !q.includes('short') && !q.includes('sell')){
+    const tmp = entry; entry = stop; stop = tmp;
+  }
+  const isShort = q.includes('short') || q.includes('sell') || stop > entry;
+  const balance = parseFloat(document.getElementById('rBalance').value) || 1000;
+  const riskPct = parseFloat(document.getElementById('rRisk').value) || 1.0;
+  const maxRisk = parseFloat(document.getElementById('rMaxRisk').value) || 1.0;
+
+  const riskAmount = balance * (riskPct / 100);
+  const priceDiff = Math.abs(entry - stop);
+  const positionSize = priceDiff > 0 ? (riskAmount / priceDiff) : 0;
+  const rr = priceDiff > 0 ? (Math.abs(target - entry) / priceDiff) : 0;
+
+  const isGuardianPass = riskPct <= maxRisk && balance > 0 && priceDiff > 0 && rr >= 1.2;
+  
+  return {
+    category: 'thesis',
+    badgeClass: 'badge-thesis',
+    badgeText: 'Trade Thesis Evaluation',
+    question: query,
+    directAnswer: `Thesis Assessment: ${isGuardianPass ? 'PROPOSABLE SETUP (Passed Risk Guardian)' : 'REQUIRES REVISION (Guardian Caution)'}`,
+    cornell: {
+      question: `Is this trade thesis sound and compliant with portfolio guardian rules?`,
+      cues: [
+        `Direction: ${isShort ? 'SHORT / SELL' : 'LONG / BUY'}`,
+        `Entry Price: $${entry.toFixed(2)}`,
+        `Stop Loss (Invalidation): $${stop.toFixed(2)}`,
+        `Target Price: $${target.toFixed(2)}`
+      ],
+      notes: [
+        `Account Balance: $${balance.toFixed(2)} USDT`,
+        `Risk Allocated: ${riskPct}% ($${riskAmount.toFixed(2)} USDT)`,
+        `Calculated Position Size: ${positionSize.toFixed(4)} units`,
+        `Risk/Reward Ratio: ${rr.toFixed(2)}R`
+      ],
+      risk: [
+        riskPct > maxRisk ? `⚠ Risk % (${riskPct}%) exceeds Guardian max limit (${maxRisk}%)` : `✓ Risk % within safe parameters (${riskPct}%)`,
+        rr < 1.5 ? `⚠ Risk/Reward ratio (${rr.toFixed(2)}R) is below recommended 1.5R benchmark` : `✓ Solid Risk/Reward ratio (${rr.toFixed(2)}R)`,
+        `Never enter this trade without placing a stop order at $${stop.toFixed(2)}`
+      ],
+      decision: isGuardianPass ? 'potential_setup (awaiting human confirmation)' : 'wait (adjust parameters)',
+      summary: `Trade plan has been evaluated. Position size is calculated at ${positionSize.toFixed(4)} units with a ${rr.toFixed(2)}R potential payout.`
+    },
+    followups: [
+      `How do I confirm this order?`,
+      `What happens if price hits invalidation $${stop.toFixed(2)}?`,
+      `How to check live order book depth before entering?`
+    ]
+  };
+}
+
+function answerMarketRankQuery(query, q){
+  return {
+    category: 'market',
+    badgeClass: 'badge-market',
+    badgeText: 'Crypto Market Rank & Leaderboards',
+    question: query,
+    directAnswer: `Crypto Market Rank tracks market-wide leaderboards across BSC (56), Solana (CT_501), Base (8453), and Ethereum (1) using 5 specialized rank categories.`,
+    cornell: {
+      question: `What market ranking categories are available in TradeTutor?`,
+      cues: [
+        `1. Token Rank (Trending / Top Search / Alpha / Stocks): Filtered by chain, volume, and 24h change.`,
+        `2. Social Hype & Sentiment Rank: Tokens with highest social volume and positive community sentiment.`,
+        `3. Smart Money Inflow Rank: Tracking high-net-worth wallet accumulations in real time.`,
+        `4. Pulse Meme Token Rank: Launchpad meme breakout score ranking (BSC).`,
+        `5. Address PnL Leaderboard: Top performing KOL & trader addresses by realized PnL.`
+      ],
+      notes: [
+        `Python Helper: src/trendscout.py runs 'crypto-market-rank' CLI.`,
+        `CLI invocation: node .agents/skills/crypto-market-rank/scripts/cli.mjs token-rank '{"rankType":10,"chainId":"56"}'`,
+        `Live dashboard scanner scores top Binance tickers (BTCUSDT, ETHUSDT, BNBUSDT) continuously.`
+      ],
+      risk: [
+        `⚠ High social hype or sudden inflow rank can precede high volatility / pullbacks.`,
+        `Always verify liquidity & order depth before trading trending tokens.`
+      ],
+      decision: `use_trendscout_skill`,
+      summary: `Market rank feeds provide high-level discovery. Combine rank signals with Cornell risk planning before taking any setup.`
+    },
+    followups: [
+      `Is BTC bullish right now?`,
+      `Check liquidity & order book for ETHUSDT`,
+      `Evaluate trade thesis`
+    ]
+  };
+}
+
+function answerLiveMarketQuery(query, q, attachContext){
+  const sym = q.includes('eth') ? 'ETHUSDT' : q.includes('bnb') ? 'BNBUSDT' : 'BTCUSDT';
+  const t = latestTickers[sym];
+  
+  if(!t){
+    return {
+      category: 'market',
+      badgeClass: 'badge-market',
+      badgeText: 'Live Market Overview',
+      question: query,
+      directAnswer: `Binance REST API data is currently updating. Please wait a moment for live ticks.`,
+      cornell: {
+        question: `What is the live status of ${sym}?`,
+        cues: [`Fetching ticker feed from Binance...`],
+        notes: [`Public endpoint: api.binance.com`],
+        risk: [`Do not trade while market ticker status is offline or pending.`],
+        decision: `wait`,
+        summary: `Live data stream is connecting.`
+      },
+      followups: [`Is BTC bullish right now?`, `What is the scanner score for ETH?`]
+    };
+  }
+
+  const obs = tickerToObs(t);
+  const scored = scoreMarket(obs);
+  const chg = parseFloat(t.priceChangePercent);
+
+  return {
+    category: 'market',
+    badgeClass: 'badge-market',
+    badgeText: `Live Market · ${sym}`,
+    question: query,
+    directAnswer: `${sym} is currently trading at $${fmtUsd(t.lastPrice)} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% 24h). Technical scanner bias is ${scored.label.replace('_', ' ').toUpperCase()} (Score: ${scored.score > 0 ? '+' : ''}${scored.score}).`,
+    cornell: {
+      question: `What is the current market context and sentiment for ${sym}?`,
+      cues: [
+        `Last Price: $${fmtUsd(t.lastPrice)}`,
+        `24h Change: ${chg.toFixed(2)}%`,
+        `24h Range: $${fmtUsd(t.lowPrice)} - $${fmtUsd(t.highPrice)}`,
+        `Bid/Ask Spread: ${obs.spread.toFixed(4)}%`
+      ],
+      notes: [
+        `Scanner Score: ${scored.score} (${scored.confidence} confidence)`,
+        `Regime: ${scored.regime}`,
+        ...(scored.bullish.map(b => `Bullish: ${b}`)),
+        ...(scored.bearish.map(b => `Bearish: ${b}`))
+      ],
+      risk: [
+        scored.warnings.length ? scored.warnings.join(' | ') : `✓ Volatility & spread are within normal operational thresholds.`,
+        `Always verify order book depth before committing orders larger than 100 USDT.`
+      ],
+      decision: scored.label === 'bullish_bias' ? 'potential_setup' : 'wait',
+      summary: `${sym} exhibits ${scored.label.replace('_', ' ')} with ${scored.confidence} confidence based on live Binance order flow metrics.`
+    },
+    followups: [
+      `Check liquidity & order book for ${sym}`,
+      `Evaluate thesis: Long ${sym} entry ${t.lastPrice} stop ${t.lowPrice} target ${t.highPrice}`,
+      `How do I manage risk on ${sym}?`
+    ]
+  };
+}
+
+function answerLiquidityQuery(query, q){
+  return {
+    category: 'concept',
+    badgeClass: 'badge-concept',
+    badgeText: 'Liquidity & Order Depth',
+    question: query,
+    directAnswer: `Liquidity reflects how easily a token can be bought or sold without causing significant price slippage. High order book depth near the best bid/ask ensures low execution risk.`,
+    cornell: {
+      question: `Why is liquidity and order book depth essential before entering a trade?`,
+      cues: [
+        `Bid Depth: Sum of buy orders waiting in the top order book layers.`,
+        `Ask Depth: Sum of sell orders waiting in the top order book layers.`,
+        `Bid/Ask Spread: The gap between the lowest seller and highest buyer.`,
+        `Order Imbalance: Ratio of buyer interest vs seller interest.`
+      ],
+      notes: [
+        `Wide spreads (>0.20%) increase trading cost instantly.`,
+        `Large market orders relative to ask depth force trade execution at worse prices (slippage).`,
+        `TradeTutor checks live order depth via Binance depth API prior to proposing trades.`
+      ],
+      risk: [
+        `⚠ Placing market orders in illiquid conditions can trigger catastrophic slippage.`,
+        `Always prefer limit orders or check TradeTutor Liquidity Risk Checker tool on the dashboard.`
+      ],
+      decision: `check_order_book`,
+      summary: `Always inspect bid/ask depth on the Liquidity panel before opening positions.`
+    },
+    followups: [
+      `Check liquidity & order book for ETHUSDT`,
+      `What is an invalidation level vs a stop-loss?`,
+      `How to size positions`
+    ]
+  };
+}
+
+function answerRiskQuery(query, q){
+  return {
+    category: 'risk',
+    badgeClass: 'badge-risk',
+    badgeText: 'Risk & Portfolio Safety',
+    question: query,
+    directAnswer: `In TradeTutor, risk management is governed by the 1-2% Account Equity Rule and enforced automatically by the Portfolio Guardian before any order can be proposed.`,
+    cornell: {
+      question: `How does TradeTutor calculate position sizing and enforce risk limits?`,
+      cues: [
+        `Account Equity Rule: Never risk more than 1% to 2% of total capital on a single trade.`,
+        `Formula: Position Size = (Account Balance × Risk %) / |Entry Price - Stop Loss|`,
+        `Invalidation Level: The price level where your trade thesis is proven wrong.`,
+        `Portfolio Guardian: Pre-trade guardrail checking max risk, daily loss, and open order caps.`
+      ],
+      notes: [
+        `Example: $1,000 balance, 1% risk ($10), Entry $100, Stop $95 (Diff $5).`,
+        `Position Size = $10 / $5 = 2.0 units.`,
+        `If price drops to $95, you lose exactly $10 (1%), preserving 99% of your capital.`
+      ],
+      risk: [
+        `⚠ Trading without a stop loss exposes accounts to total drawdown.`,
+        `⚠ Leverage increases position size without expanding your account buffer.`
+      ],
+      decision: `strictly_enforce_stop_loss`,
+      summary: `Risk sizing determines longevity in trading. Always calculate your exact position size before entering.`
+    },
+    followups: [
+      `Evaluate thesis: Long BTC entry 74500 stop 73800 target 77000`,
+      `How does the Portfolio Guardian protect me?`,
+      `What is an invalidation level vs a stop-loss?`
+    ]
+  };
+}
+
+function answerCornellQuery(query, q){
+  return {
+    category: 'concept',
+    badgeClass: 'badge-concept',
+    badgeText: 'Cornell Trading Framework',
+    question: query,
+    directAnswer: `TradeTutor uses the Cornell Notes framework to transform subjective market observations into structured, explainable, and reviewable trading decisions.`,
+    cornell: {
+      question: `What are the 7 core components of TradeTutor's Cornell Framework?`,
+      cues: [
+        `1. Question: The specific hypothesis being tested.`,
+        `2. Cues: Price, trend, volume, and indicator signals.`,
+        `3. Notes: Objective market data and account state.`,
+        `4. Analysis: Comparison of bullish vs bearish evidence.`
+      ],
+      notes: [
+        `5. Risk: Sizing, stop loss, target, and R-multiple calculation.`,
+        `6. Decision: potential_setup, wait, or no_trade.`,
+        `7. Summary: Concise recap of the trade thesis.`
+      ],
+      risk: [
+        `Eliminates emotional impulse trading by requiring clear evidence for every step.`
+      ],
+      decision: `explain_and_learn`,
+      summary: `By documenting trades with Cornell Notes, traders can journal outcomes and continuously improve with post-trade coaching.`
+    },
+    followups: [
+      `Is BTC bullish right now?`,
+      `How to size positions`,
+      `Evaluate trade thesis`
+    ]
+  };
+}
+
+function answerGeneralQuery(query, q){
+  return {
+    category: 'concept',
+    badgeClass: 'badge-concept',
+    badgeText: 'TradeTutor AI Coaching',
+    question: query,
+    directAnswer: `TradeTutor is designed to help you research, understand, plan, and review trades with human-in-the-loop safety and explainable AI analysis.`,
+    cornell: {
+      question: `How should you approach this question in your trading process?`,
+      cues: [
+        `Core Principle: Research → Explain → Assess Risk → Ask Permission → Execute → Record → Learn.`,
+        `Data Source: Real-time public REST market feeds from Binance.`,
+        `Safety Layer: Human Confirmation Gate blocks unauthorized order dispatch.`
+      ],
+      notes: [
+        `Question asked: "${query}"`,
+        `Always combine technical indicators with explicit risk rules and liquidity checks.`
+      ],
+      risk: [
+        `Never trade based on excitement or FOMO. Verify market regime and risk parameters first.`
+      ],
+      decision: `research_first`,
+      summary: `TradeTutor recommends running your question through the live scanner, risk planner, and liquidity check tools on this dashboard.`
+    },
+    followups: [
+      `Is BTC bullish right now?`,
+      `How to size positions`,
+      `Check ETH liquidity`
+    ]
+  };
+}
+
+function renderQaResponse(res){
+  const box = document.getElementById('qaAnswerOutput');
+  
+  box.innerHTML = `
+    <div class="qa-card">
+      <div class="qa-card-header">
+        <div>
+          <span class="qa-badge ${res.badgeClass}">${res.badgeText}</span>
+          <div class="qa-q-text" style="margin-top:6px;">❓ ${escapeHtml(res.question)}</div>
+        </div>
+        <div class="qa-meta">${new Date().toLocaleTimeString()}</div>
+      </div>
+
+      <div style="font-size:13px;line-height:1.6;margin-bottom:14px;color:var(--text);font-family:var(--sans);">
+        ${escapeHtml(res.directAnswer)}
+      </div>
+
+      <div class="cornell-section" style="background:#070A07;padding:12px;border:1px solid var(--line);margin-bottom:12px;">
+        <h3 style="color:var(--accent);font-family:var(--mono);font-size:11px;margin:0 0 8px;">CORNELL EXPLAINABILITY BREAKDOWN</h3>
+        
+        <div style="margin-bottom:8px;">
+          <strong style="color:var(--muted);font-size:11px;font-family:var(--mono);">[QUESTION]</strong>
+          <p style="margin:2px 0 6px;">${escapeHtml(res.cornell.question)}</p>
+        </div>
+
+        <div style="margin-bottom:8px;">
+          <strong style="color:var(--muted);font-size:11px;font-family:var(--mono);">[CUES &amp; EVIDENCE]</strong>
+          <ul>${res.cornell.cues.map(c=>`<li>${escapeHtml(c)}</li>`).join('')}</ul>
+        </div>
+
+        <div style="margin-bottom:8px;">
+          <strong style="color:var(--muted);font-size:11px;font-family:var(--mono);">[NOTES &amp; METRICS]</strong>
+          <ul>${res.cornell.notes.map(n=>`<li>${escapeHtml(n)}</li>`).join('')}</ul>
+        </div>
+
+        <div style="margin-bottom:8px;">
+          <strong style="color:var(--warn);font-size:11px;font-family:var(--mono);">[RISK &amp; GUARDIAN CHECK]</strong>
+          <ul>${res.cornell.risk.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul>
+        </div>
+
+        <div style="margin-bottom:6px;">
+          <strong style="color:var(--accent);font-size:11px;font-family:var(--mono);">[DECISION RECOMMENDATION]</strong>
+          <p style="margin:2px 0;color:var(--accent);font-family:var(--mono);font-weight:700;">${escapeHtml(res.cornell.decision)}</p>
+        </div>
+
+        <div>
+          <strong style="color:var(--muted);font-size:11px;font-family:var(--mono);">[SUMMARY]</strong>
+          <p style="margin:2px 0 0;">${escapeHtml(res.cornell.summary)}</p>
+        </div>
+      </div>
+
+      <div class="followup-wrap">
+        <span class="followup-label">SUGGESTED FOLLOW-UPS:</span>
+        ${res.followups.map(f=>`
+          <div class="chip" style="font-size:10px;padding:4px 8px;" onclick="askPreset('${f.replace(/'/g, "\\'")}')">💬 ${escapeHtml(f)}</div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+fetchTickers();
+setInterval(fetchTickers, 15000);
+</script>
+
+</body>
+</html>
