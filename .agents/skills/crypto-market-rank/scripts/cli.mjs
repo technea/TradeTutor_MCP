@@ -119,7 +119,7 @@ const COMMANDS = {
 export { COMMANDS, call, qs, UA, TIMEOUT_MS, CHAINS, validateChainId };
 
 // ---- CLI dispatch (only runs when executed directly, not when imported) ----
-if (process.argv[1] && (process.argv[1].endsWith('cli.mjs') || process.argv[1].endsWith('cli.js'))) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   const [cmd, paramsStr] = process.argv.slice(2);
 
   if (!cmd || cmd === '--help' || cmd === '-h') {
