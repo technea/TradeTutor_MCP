@@ -375,7 +375,7 @@ function fmtUsd(n){
 async function fetchTickers(){
   try{
     const results = await Promise.all(SYMBOLS.map(s=>
-      fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${s}`).then(r=>r.json())
+      fetch(`/api/ticker?symbol=${s}`, { cache:'no-store' }).then(r=>r.json())
     ));
     results.forEach((r,i)=> latestTickers[SYMBOLS[i]] = r);
     renderPrices();
@@ -543,7 +543,7 @@ async function runLiquidityCheck(){
   box.innerHTML = `<div class="loading">Fetching live order book for ${sym}…</div>`;
 
   try{
-    const res = await fetch(`https://api.binance.com/api/v3/depth?symbol=${sym}&limit=10`);
+    const res = await fetch(`/api/depth?symbol=${sym}`, { cache:'no-store' });
     const book = await res.json();
     const bidDepth = book.bids.reduce((sum,[p,q])=> sum + parseFloat(p)*parseFloat(q), 0);
     const askDepth = book.asks.reduce((sum,[p,q])=> sum + parseFloat(p)*parseFloat(q), 0);
@@ -610,7 +610,7 @@ function askPreset(text){
   submitQuestion();
 }
 
-function submitQuestion(){
+async function submitQuestion(){
   const inputEl = document.getElementById('qaInput');
   const query = inputEl.value.trim();
   if(!query) return;
@@ -620,11 +620,10 @@ function submitQuestion(){
   statusEl.textContent = 'Analyzing question…';
   statusEl.className = 'loading';
 
-  setTimeout(()=>{
-    const response = processQaQuery(query, attachContext);
+  try{
+    // Market-related answers make a new public Binance request here; no Q&A result is cached.
+    const response = await processQaQuery(query, attachContext);
     renderQaResponse(response);
-    
-    // Add to history
     qaHistoryArray.unshift({
       query: query,
       timestamp: new Date().toLocaleTimeString(),
@@ -632,10 +631,14 @@ function submitQuestion(){
     });
     renderQaHistory();
 
-    statusEl.textContent = 'Answer generated';
+    statusEl.textContent = 'Live answer fetched';
     statusEl.className = 'status ok';
     inputEl.value = '';
-  }, 250);
+  }catch(error){
+    statusEl.textContent = 'Live request failed';
+    statusEl.className = 'status err';
+    renderQaResponse(liveErrorResponse(query, error));
+  }
 }
 
 function clearQaHistory(){
@@ -665,8 +668,9 @@ function escapeHtml(str){
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-function processQaQuery(query, attachContext){
+async function processQaQuery(query, attachContext){
   const q = query.toLowerCase();
+  const asksAboutBnbChain = /\bbnb\s*(chain|smart\s*chain)\b|\bbinance\s+smart\s+chain\b|\bbsc\b/.test(q);
   
   // 1. Trade Thesis Check (numbers for entry/stop/target or long/short)
   const numbers = q.match(/\b\d+(\.\d+)?\b/g);
@@ -674,19 +678,29 @@ function processQaQuery(query, attachContext){
     return evaluateTradeThesis(query, numbers, q);
   }
 
-  // 2. Market Rank & Leaderboard Query
-  if(q.includes('rank') || q.includes('trending') || q.includes('hype') || q.includes('inflow') || q.includes('leaderboard') || q.includes('top tokens') || q.includes('pnl')){
+  if(q.includes('safe') || q.includes('audit') || q.includes('honeypot') || q.includes('scam') || q.includes('rug pull') || q.includes('security')){
+    return answerTokenAuditQuery(query, q);
+  }
+
+  // A chain-level question always gets fresh BSC rank data. The rank helper chooses
+  // Trending by default, or Alpha / Top Search / liquidity / volume from the wording.
+  if(asksAboutBnbChain){
+    return answerMarketRankQuery(query, q);
+  }
+
+  // Live liquidity must be checked before a token-name query such as "ETH liquidity".
+  if(q.includes('liquidity') || q.includes('order book') || q.includes('depth') || q.includes('spread') || q.includes('slippage') || q.includes('book')){
+    return answerLiquidityQuery(query, q);
+  }
+
+  // Live market-rank request, including liquidity/volume sorted token boards.
+  if(q.includes('rank') || q.includes('trending') || q.includes('alpha') || q.includes('hype') || q.includes('inflow') || q.includes('leaderboard') || q.includes('top tokens') || q.includes('pnl') || q.includes('search') || q.includes('searched')){
     return answerMarketRankQuery(query, q);
   }
 
   // 3. Live Ticker / Market Status Query
   if(q.includes('btc') || q.includes('eth') || q.includes('bnb') || q.includes('bullish') || q.includes('bearish') || q.includes('market') || q.includes('bias') || q.includes('trend')){
     return answerLiveMarketQuery(query, q, attachContext);
-  }
-
-  // 3. Liquidity & Order Book Depth Query
-  if(q.includes('liquidity') || q.includes('order book') || q.includes('depth') || q.includes('spread') || q.includes('slippage') || q.includes('book')){
-    return answerLiquidityQuery(query, q);
   }
 
   // 4. Position Sizing & Risk Management Query
@@ -697,6 +711,11 @@ function processQaQuery(query, attachContext){
   // 5. Cornell Framework Query
   if(q.includes('cornell') || q.includes('framework') || q.includes('notes') || q.includes('how tradetutor works')){
     return answerCornellQuery(query, q);
+  }
+
+  // A short unknown phrase is treated as a token lookup (for example: "pancake" or "cake").
+  if(q.split(/\s+/).length <= 3 && /^[a-z0-9$ .-]+$/i.test(query)){
+    return answerTokenSearchQuery(query);
   }
 
   // 6. Default Educational Q&A Responder
@@ -757,33 +776,67 @@ function evaluateTradeThesis(query, numbers, q){
   };
 }
 
-function answerMarketRankQuery(query, q){
+function chainFromQuestion(q){
+  if(q.includes('solana') || q.includes(' sol ')) return 'CT_501';
+  if(q.includes('base')) return '8453';
+  if(q.includes('ethereum') || q.includes(' eth chain')) return '1';
+  return '56';
+}
+
+function symbolFromQuestion(q){
+  if(q.includes('eth')) return 'ETHUSDT';
+  if(q.includes('bnb')) return 'BNBUSDT';
+  return 'BTCUSDT';
+}
+
+async function fetchLiveJson(url, options = {}){
+  if(location.protocol === 'file:'){
+    throw new Error('Open http://127.0.0.1:8787 after running "node dashboard_server.mjs". Direct file opens cannot proxy live Binance data.');
+  }
+  const response = await fetch(url, { cache: 'no-store', ...options });
+  const body = await response.json().catch(() => ({}));
+  if(!response.ok) throw new Error(`HTTP ${response.status}: ${body?.error || body?.message || body?.code || 'Binance request failed'}`);
+  return body;
+}
+
+async function answerMarketRankQuery(query, q){
+  const rankType = q.includes('top search') || q.includes('most searched') ? 11 : q.includes('alpha') ? 20 : 10;
+  const sortBy = q.includes('liquidity') ? 20 : q.includes('volume') ? 70 : 0;
+  const requestMarker = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const body = { rankType, chainId: chainFromQuestion(q), page: 1, size: 5, sortBy, orderAsc: false };
+  const json = await fetchLiveJson(
+    '/api/rank',
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  );
+  const tokens = json?.data?.tokens;
+  if(!Array.isArray(tokens)) throw new Error('Unexpected Binance rank response: data.tokens is missing');
+  const fetchedAt = new Date().toLocaleString();
+  const rows = tokens.slice(0, 5).map((token, index) => {
+    const name = token.name || token.tokenName || token.metaInfo?.name || token.symbol;
+    return `#${index + 1} ${token.symbol} (${name}) — $${fmtUsd(token.price)} | 24h ${Number(token.percentChange24h || 0).toFixed(2)}% | liquidity $${fmtUsd(token.liquidity)} | volume $${fmtUsd(token.volume24h || token.volume)}`;
+  });
   return {
     category: 'market',
     badgeClass: 'badge-market',
     badgeText: 'Crypto Market Rank & Leaderboards',
     question: query,
-    directAnswer: `Crypto Market Rank tracks market-wide leaderboards across BSC (56), Solana (CT_501), Base (8453), and Ethereum (1) using 5 specialized rank categories.`,
+    directAnswer: `Fresh Binance ${rankType === 11 ? 'Top Search' : rankType === 20 ? 'Alpha' : 'Trending'} results. Fetched at: ${fetchedAt}. Request marker: ${requestMarker}.`,
     cornell: {
       question: `What market ranking categories are available in TradeTutor?`,
       cues: [
-        `1. Token Rank (Trending / Top Search / Alpha / Stocks): Filtered by chain, volume, and 24h change.`,
-        `2. Social Hype & Sentiment Rank: Tokens with highest social volume and positive community sentiment.`,
-        `3. Smart Money Inflow Rank: Tracking high-net-worth wallet accumulations in real time.`,
-        `4. Pulse Meme Token Rank: Launchpad meme breakout score ranking (BSC).`,
-        `5. Address PnL Leaderboard: Top performing KOL & trader addresses by realized PnL.`
+        ...rows
       ],
       notes: [
-        `Python Helper: src/trendscout.py runs 'crypto-market-rank' CLI.`,
-        `CLI invocation: node .agents/skills/crypto-market-rank/scripts/cli.mjs token-rank '{"rankType":10,"chainId":"56"}'`,
-        `Live dashboard scanner scores top Binance tickers (BTCUSDT, ETHUSDT, BNBUSDT) continuously.`
+        `Chain: ${body.chainId}; API order is preserved as the rank order.`,
+        `Sort: ${sortBy === 20 ? 'liquidity' : sortBy === 70 ? 'volume' : 'Binance default trending order'}.`,
+        `Every dashboard question in this category sends a new POST request; no previous response is reused.`
       ],
       risk: [
         `⚠ High social hype or sudden inflow rank can precede high volatility / pullbacks.`,
         `Always verify liquidity & order depth before trading trending tokens.`
       ],
-      decision: `use_trendscout_skill`,
-      summary: `Market rank feeds provide high-level discovery. Combine rank signals with Cornell risk planning before taking any setup.`
+      decision: `live_rank_data_received`,
+      summary: `Live Binance rank data was received at ${fetchedAt}. Treat discovery rank as research, not a trade signal.`
     },
     followups: [
       `Is BTC bullish right now?`,
@@ -793,29 +846,13 @@ function answerMarketRankQuery(query, q){
   };
 }
 
-function answerLiveMarketQuery(query, q, attachContext){
-  const sym = q.includes('eth') ? 'ETHUSDT' : q.includes('bnb') ? 'BNBUSDT' : 'BTCUSDT';
-  const t = latestTickers[sym];
+async function answerLiveMarketQuery(query, q, attachContext){
+  const sym = symbolFromQuestion(q);
+  const requestMarker = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  // This fetch is intentionally separate from the 15-second dashboard refresh.
+  const t = await fetchLiveJson(`/api/ticker?symbol=${sym}`);
+  latestTickers[sym] = t;
   
-  if(!t){
-    return {
-      category: 'market',
-      badgeClass: 'badge-market',
-      badgeText: 'Live Market Overview',
-      question: query,
-      directAnswer: `Binance REST API data is currently updating. Please wait a moment for live ticks.`,
-      cornell: {
-        question: `What is the live status of ${sym}?`,
-        cues: [`Fetching ticker feed from Binance...`],
-        notes: [`Public endpoint: api.binance.com`],
-        risk: [`Do not trade while market ticker status is offline or pending.`],
-        decision: `wait`,
-        summary: `Live data stream is connecting.`
-      },
-      followups: [`Is BTC bullish right now?`, `What is the scanner score for ETH?`]
-    };
-  }
-
   const obs = tickerToObs(t);
   const scored = scoreMarket(obs);
   const chg = parseFloat(t.priceChangePercent);
@@ -825,7 +862,7 @@ function answerLiveMarketQuery(query, q, attachContext){
     badgeClass: 'badge-market',
     badgeText: `Live Market · ${sym}`,
     question: query,
-    directAnswer: `${sym} is currently trading at $${fmtUsd(t.lastPrice)} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% 24h). Technical scanner bias is ${scored.label.replace('_', ' ').toUpperCase()} (Score: ${scored.score > 0 ? '+' : ''}${scored.score}).`,
+    directAnswer: `Fresh ${sym} ticker fetched at ${new Date().toLocaleString()} (request ${requestMarker}): $${fmtUsd(t.lastPrice)} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% 24h). Technical scanner bias is ${scored.label.replace('_', ' ').toUpperCase()} (Score: ${scored.score > 0 ? '+' : ''}${scored.score}).`,
     cornell: {
       question: `What is the current market context and sentiment for ${sym}?`,
       cues: [
@@ -855,38 +892,108 @@ function answerLiveMarketQuery(query, q, attachContext){
   };
 }
 
-function answerLiquidityQuery(query, q){
+async function answerLiquidityQuery(query, q){
+  const sym = symbolFromQuestion(q);
+  const requestMarker = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const book = await fetchLiveJson(`/api/depth?symbol=${sym}`);
+  if(!Array.isArray(book.bids) || !Array.isArray(book.asks) || !book.bids.length || !book.asks.length) throw new Error('Unexpected Binance order-book response');
+  const bidDepth = book.bids.reduce((sum, [p, amount]) => sum + Number(p) * Number(amount), 0);
+  const askDepth = book.asks.reduce((sum, [p, amount]) => sum + Number(p) * Number(amount), 0);
+  const spread = (Number(book.asks[0][0]) - Number(book.bids[0][0])) / Number(book.asks[0][0]) * 100;
+  const imbalance = (bidDepth - askDepth) / (bidDepth + askDepth) * 100;
+  const fetchedAt = new Date().toLocaleString();
   return {
     category: 'concept',
     badgeClass: 'badge-concept',
-    badgeText: 'Liquidity & Order Depth',
+    badgeText: `Live Liquidity · ${sym}`,
     question: query,
-    directAnswer: `Liquidity reflects how easily a token can be bought or sold without causing significant price slippage. High order book depth near the best bid/ask ensures low execution risk.`,
+    directAnswer: `Fresh ${sym} order book fetched at ${fetchedAt} (request ${requestMarker}). Spread: ${spread.toFixed(4)}%; visible bid depth: $${fmtUsd(bidDepth)}; visible ask depth: $${fmtUsd(askDepth)}.`,
     cornell: {
       question: `Why is liquidity and order book depth essential before entering a trade?`,
       cues: [
-        `Bid Depth: Sum of buy orders waiting in the top order book layers.`,
-        `Ask Depth: Sum of sell orders waiting in the top order book layers.`,
-        `Bid/Ask Spread: The gap between the lowest seller and highest buyer.`,
-        `Order Imbalance: Ratio of buyer interest vs seller interest.`
+        `Best bid: $${fmtUsd(book.bids[0][0])}; best ask: $${fmtUsd(book.asks[0][0])}.`,
+        `Top-10 bid depth: $${fmtUsd(bidDepth)}; top-10 ask depth: $${fmtUsd(askDepth)}.`,
+        `Order-book imbalance: ${imbalance.toFixed(1)}% (${imbalance >= 0 ? 'bid-heavy' : 'ask-heavy'}).`,
+        `This is a new direct Binance depth request, not the dashboard's earlier panel value.`
       ],
       notes: [
-        `Wide spreads (>0.20%) increase trading cost instantly.`,
-        `Large market orders relative to ask depth force trade execution at worse prices (slippage).`,
-        `TradeTutor checks live order depth via Binance depth API prior to proposing trades.`
+        spread > 0.20 ? `Warning: spread exceeds 0.20%, increasing transaction cost.` : `Spread is below the 0.20% dashboard warning threshold.`,
+        `Visible depth is not total market liquidity; large orders can still experience slippage.`
       ],
       risk: [
         `⚠ Placing market orders in illiquid conditions can trigger catastrophic slippage.`,
         `Always prefer limit orders or check TradeTutor Liquidity Risk Checker tool on the dashboard.`
       ],
-      decision: `check_order_book`,
-      summary: `Always inspect bid/ask depth on the Liquidity panel before opening positions.`
+      decision: `live_order_book_received`,
+      summary: `The displayed depth is a point-in-time snapshot from ${fetchedAt}; refresh before placing a trade.`
     },
     followups: [
       `Check liquidity & order book for ETHUSDT`,
       `What is an invalidation level vs a stop-loss?`,
       `How to size positions`
     ]
+  };
+}
+
+async function answerTokenSearchQuery(query){
+  const requestMarker = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const json = await fetchLiveJson('/api/token-search', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keyword: query, chainIds: '56' })
+  });
+  const tokens = Array.isArray(json?.data) ? json.data.slice(0, 5) : [];
+  if(!tokens.length) throw new Error(`No BNB Chain token matches found for "${query}"`);
+  const fetchedAt = new Date().toLocaleString();
+  return {
+    category: 'market', badgeClass: 'badge-market', badgeText: 'Live BNB Chain Token Search', question: query,
+    directAnswer: `Fresh BNB Chain token search for “${query}”, fetched at ${fetchedAt}. Request marker: ${requestMarker}.`,
+    cornell: {
+      question: `Which BNB Chain tokens match “${query}”?`,
+      cues: tokens.map((token, index) => `#${index + 1} ${token.symbol} (${token.name}) — $${fmtUsd(token.price)} | 24h ${Number(token.percentChange24h || 0).toFixed(2)}% | liquidity $${fmtUsd(token.liquidity)} | volume $${fmtUsd(token.volume24h)}`),
+      notes: ['Search is limited to BNB Chain (chain 56).', 'Select the contract address before trading; similarly named tokens may exist.'],
+      risk: ['A matching symbol/name is not proof of an official token.', 'Check contract security and liquidity before trading.'],
+      decision: 'live_token_search_received',
+      summary: `Live BNB Chain results were returned at ${fetchedAt}; no previous search result was reused.`
+    },
+    followups: [`${query} liquidity on BNB Chain`, `Show BNB Chain trending tokens`, `Is ${query} safe?`]
+  };
+}
+
+async function answerTokenAuditQuery(query, q){
+  const contractAddress = query.match(/0x[a-fA-F0-9]{40}/)?.[0];
+  if(!contractAddress){
+    return {
+      category: 'risk', badgeClass: 'badge-risk', badgeText: 'Token Audit Requires Contract', question: query,
+      directAnswer: 'Paste the exact token contract address to run a live security audit. Token names alone can match fake or copycat tokens.',
+      cornell: { question: 'Can this token be audited safely?', cues: ['The security API requires a chain and contract address.'], notes: ['BNB Chain uses chain ID 56.', 'Example: Is 0x... safe on BNB Chain?'], risk: ['Do not trade based only on a token name or ticker symbol.'], decision: 'await_contract_address', summary: 'Paste the verified contract address from an official source to continue.' },
+      followups: ['Search pancake', 'Show BNB Chain trending tokens']
+    };
+  }
+  const requestMarker = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const json = await fetchLiveJson('/api/token-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chainId: chainFromQuestion(q), contractAddress }) });
+  const audit = json?.data;
+  if(!audit?.hasResult || !audit?.isSupported){
+    return { category: 'risk', badgeClass: 'badge-risk', badgeText: 'Audit Unavailable', question: query,
+      directAnswer: 'Security audit data is not available for this token on the selected chain. No risk level is shown because the response is not reliable.',
+      cornell: { question: 'Is security audit data available?', cues: [`Fetched at: ${new Date().toLocaleString()}`, `Request marker: ${requestMarker}`], notes: ['Binance did not provide a supported audit result.'], risk: ['Verify the contract address and chain; do not treat unavailable data as safe.'], decision: 'do_not_trade_without_verification', summary: 'Try again later or verify the official contract address.' }, followups: ['Search pancake'] };
+  }
+  const riskItems = (audit.riskItems || []).flatMap(item => (item.details || []).filter(detail => detail.isHit).map(detail => `${item.id}: ${detail.title} — ${detail.description}`));
+  const riskLevel = audit.riskLevelEnum || 'UNKNOWN';
+  const extra = audit.extraInfo || {};
+  return {
+    category: 'risk', badgeClass: audit.riskLevel >= 4 ? 'badge-thesis' : 'badge-risk', badgeText: `Live Token Audit · ${riskLevel}`, question: query,
+    directAnswer: `Fresh Binance token audit: ${riskLevel} risk. Fetched at ${new Date().toLocaleString()}. Request marker: ${requestMarker}.`,
+    cornell: { question: `What security risks are reported for ${contractAddress}?`, cues: [`Risk level: ${riskLevel} (${audit.riskLevel}).`, `Buy tax: ${extra.buyTax ?? 'unknown'}%; sell tax: ${extra.sellTax ?? 'unknown'}%.`, `Contract verified: ${extra.isVerified === true ? 'yes' : extra.isVerified === false ? 'no' : 'unknown'}.`], notes: riskItems.length ? riskItems : ['No triggered risk items were returned by this audit.'], risk: [audit.riskLevel >= 5 ? 'BLOCK: severe risk level. Do not trade.' : audit.riskLevel >= 4 ? 'Avoid trading: high risk level reported.' : 'Low risk is not a guarantee of safety; audit data is point-in-time only.'], decision: audit.riskLevel >= 5 ? 'block_transaction' : audit.riskLevel >= 4 ? 'avoid_trade' : 'manual_review_required', summary: 'This audit is for reference only and does not constitute investment advice. Always conduct your own research.' },
+    followups: ['Check BNB Chain liquidity', 'Show BNB Chain trending tokens']
+  };
+}
+
+function liveErrorResponse(query, error){
+  return {
+    category: 'market', badgeClass: 'badge-risk', badgeText: 'Live Data Error', question: query,
+    directAnswer: `The live Binance request failed: ${error.message}. No cached or fallback market data was used.`,
+    cornell: { question: 'Could a live market answer be retrieved?', cues: ['Live request did not succeed.'], notes: [`Actual error: ${error.message}`], risk: ['Do not make a decision from stale or unavailable market data.'], decision: 'wait_for_live_data', summary: 'Retry once connectivity or the Binance endpoint is available.' },
+    followups: ['What are the trending tokens?', 'Check BTC liquidity']
   };
 }
 
