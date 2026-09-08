@@ -39,9 +39,20 @@ class BinanceMCPAdapter:
     KLINE_TOOL = "get_spot_kline_candlestick_data"
     TICKER_24H_TOOL = "get_spot_24hr_ticker_price_change_statistics"
 
-    def __init__(self, call_tool: MCPToolCaller | None = None, *, list_tools: MCPToolLister | None = None) -> None:
+    def __init__(
+        self,
+        call_tool: MCPToolCaller | None = None,
+        *,
+        list_tools: MCPToolLister | None = None,
+        market_tool: str | None = None,
+        account_tool: str | None = None,
+        order_tool: str | None = None,
+    ) -> None:
         self._call_tool = call_tool
         self._list_tools = list_tools
+        self._market_tool = market_tool
+        self._account_tool = account_tool
+        self._order_tool = order_tool
 
     def _call(self, tool_name: str, arguments: Mapping[str, Any]) -> Mapping[str, Any]:
         if not self._call_tool:
@@ -71,6 +82,9 @@ class BinanceMCPAdapter:
         return name, schema
 
     def get_market_context(self, symbol: str) -> Mapping[str, Any]:
+        # If a direct market_tool name was injected (e.g. in tests), use it directly
+        if self._market_tool:
+            return self._call(self._market_tool, {"symbol": symbol})
         return {
             "symbol": symbol,
             "price": self._call(self.PRICE_TOOL, {"symbol": symbol}),
@@ -80,6 +94,9 @@ class BinanceMCPAdapter:
         }
 
     def get_account_context(self) -> Mapping[str, Any]:
+        # If a direct account_tool name was injected (e.g. in tests), use it directly
+        if self._account_tool:
+            return self._call(self._account_tool, {})
         tool, _ = self._discover(("account", "balance"))
         return self._call(tool, {})
 
@@ -116,5 +133,13 @@ class BinanceMCPAdapter:
     def execute_confirmed_order(self, proposal: TradeProposal, *, confirmed: bool) -> Mapping[str, Any]:
         if not confirmed:
             raise PermissionError("Explicit user confirmation is required before execution.")
+        # If a direct order_tool name was injected (e.g. in tests), use it directly
+        if self._order_tool:
+            return self._call(self._order_tool, {
+                "symbol": proposal.symbol,
+                "side": proposal.side.upper(),
+                "quantity": proposal.quantity,
+                "type": "MARKET",
+            })
         tool, schema = self._discover(("order", "place", "trade"))
         return self._call(tool, self._order_arguments(schema, proposal))
