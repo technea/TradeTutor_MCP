@@ -13,7 +13,7 @@ async function readJson(req) {
 
 async function binancePublic(path) {
   let lastError;
-  for (const host of ['api.binance.com', 'api1.binance.com', 'api2.binance.com', 'api3.binance.com']) {
+  for (const host of ['data-api.binance.vision', 'api.binance.com', 'api1.binance.com', 'api2.binance.com', 'api3.binance.com']) {
     try {
       const response = await fetch(`https://${host}${path}`, { headers: { 'Cache-Control': 'no-cache' }, signal: AbortSignal.timeout(8000) });
       const data = await response.json();
@@ -21,7 +21,7 @@ async function binancePublic(path) {
       return data;
     } catch (error) { lastError = error; }
   }
-  throw new Error(`Binance public API unavailable after 4 attempts: ${lastError?.message || 'fetch failed'}`);
+  throw new Error(`Binance public API unavailable after 5 attempts: ${lastError?.message || 'fetch failed'}`);
 }
 
 function send(res, status, body) {

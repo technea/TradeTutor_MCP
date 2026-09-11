@@ -24,7 +24,7 @@ async function bodyJson(req) {
 }
 
 async function binancePublic(path) {
-  const hosts = ['api.binance.com', 'api1.binance.com', 'api2.binance.com', 'api3.binance.com'];
+  const hosts = ['data-api.binance.vision', 'api.binance.com', 'api1.binance.com', 'api2.binance.com', 'api3.binance.com'];
   let lastError;
   for (const host of hosts) {
     try {

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TradeTutor — Live Terminal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#0A0D0B;
@@ -18,7 +18,7 @@
     --warn:#F2B84B;
     --bad:#FF5C5C;
     --mono:'JetBrains Mono',monospace;
-    --sans:'Inter',sans-serif;
+    --sans:'Geist',system-ui,sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
@@ -48,8 +48,8 @@
     padding:18px 18px 16px;position:relative;
   }
   .panel h2{
-    font-family:var(--mono);font-size:12px;font-weight:500;
-    color:var(--muted);margin:0 0 14px;letter-spacing:.03em;
+    font-family:var(--sans);font-size:15px;font-weight:600;
+    color:var(--text);margin:0 0 16px;letter-spacing:-.01em;
     display:flex;align-items:center;justify-content:space-between;
   }
   .panel h2 .tag{color:var(--accent);}
@@ -125,6 +125,35 @@
   }
 
   .loading{color:var(--muted);font-family:var(--mono);font-size:12px;}
+
+  .site-footer{width:100vw;margin:96px calc(50% - 50vw) -60px;padding:56px max(24px,calc((100vw - 1180px)/2));border-top:1px solid var(--line);background:#080A0D;font-family:var(--mono);color:var(--muted);}
+  .footer-layout{display:grid;grid-template-columns:1.45fr repeat(3,1fr);gap:44px;}
+  .footer-brand{max-width:280px;}
+  .footer-mark{display:flex;align-items:center;gap:12px;color:var(--text);font-size:23px;letter-spacing:.25em;font-weight:700;}
+  .footer-mark-square{width:30px;height:30px;border:3px solid var(--warn);display:inline-block;box-shadow:inset 0 0 0 5px #080A0D;}
+  .footer-brand p{font-size:11px;line-height:1.75;margin:22px 0;color:#A8B6C8;}
+  .footer-links h3{margin:0 0 16px;color:var(--warn);font-size:10px;letter-spacing:.16em;text-transform:uppercase;}
+  .footer-links a{display:block;color:#DDE5EF;text-decoration:none;font-size:11px;line-height:2.9;transition:color .2s ease,transform .2s ease;}
+  .footer-links a:hover{color:var(--accent);transform:translateX(3px);}
+  .footer-disclaimer{border-top:1px solid var(--line);margin-top:40px;padding-top:16px;font-size:10px;line-height:1.7;}
+  .footer-disclaimer-new{border-top:1px solid var(--line);margin-top:40px;padding-top:16px;font-size:10px;line-height:1.7;}
+  .architecture-section{margin-top:86px;padding-top:36px;border-top:1px solid var(--line);}
+  .architecture-section>h2{font-size:clamp(28px,4vw,46px);letter-spacing:-.04em;margin:0 0 12px;}
+  .architecture-section>p{max-width:820px;color:#A8B6C8;font-family:var(--mono);font-size:12px;line-height:1.8;}
+  .arch-diagram{margin-top:32px;padding:34px;border:1px solid #263140;background:radial-gradient(circle at 50% 0%,#121a2a,#090C12 62%);border-radius:8px;overflow:hidden;}
+  .arch-flow{display:grid;grid-template-columns:1fr 54px 1.25fr 54px 1fr;gap:12px;align-items:center;}
+  .arch-column{display:grid;gap:14px;}.arch-stack{display:grid;gap:14px;}
+  .arch-box{border:1px solid #3B4B62;background:#111827;padding:15px;border-radius:7px;min-height:82px;transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease;}
+  .arch-box:hover{transform:translateY(-3px);border-color:#18D7F2;box-shadow:0 14px 30px #0006;}
+  .arch-box strong{display:block;color:#F2F5FA;font-family:var(--sans);font-size:15px;margin-bottom:6px;}.arch-box span{display:block;color:#A8B6C8;font-family:var(--mono);font-size:10px;line-height:1.55;}
+  .arch-box.engine{border-color:#18D7F2;box-shadow:0 0 0 1px #0A6A78;}.arch-box.engine strong{color:#C5F8FF;}
+  .arch-arrow{text-align:center;color:#18D7F2;font-family:var(--mono);font-size:22px;}.arch-arrow span{display:block;color:#8796AB;font-size:9px;line-height:1.3;margin-top:5px;}.arch-rail{display:flex;justify-content:center;color:#F1C400;font-family:var(--mono);font-size:20px;padding:18px 0;}.arch-rail span{color:#8796AB;font-size:9px;margin:5px 10px 0;}
+  .topnav{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 24px;border-bottom:1px solid #202938;background:#090C12E8;backdrop-filter:blur(14px);}
+  .topnav .brand,.topnav .status{display:none;}
+  .nav-brand{display:flex;align-items:center;gap:10px;color:#F2F5FA;text-decoration:none;font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.13em;}.nav-square{width:18px;height:18px;border:2px solid var(--warn);box-shadow:inset 0 0 0 3px #090C12;}.nav-links{display:flex;align-items:center;gap:24px;}.nav-links a{color:#ABB7C8;text-decoration:none;font:11px var(--mono);transition:color .2s ease;}.nav-links a:hover{color:#F1C400;}.nav-status{font:10px var(--mono);color:var(--accent);border:1px solid #1B6448;padding:7px 10px;}
+  .site-footer>.footer-architecture,.site-footer>.footer-grid,.site-footer>.footer-disclaimer{display:none;}
+  @media(max-width:800px){.topnav{padding:13px 16px;}.nav-links{display:none;}.footer-layout{grid-template-columns:1fr 1fr;gap:28px;}.footer-brand{grid-column:1/-1;}.arch-flow{grid-template-columns:1fr;}.arch-arrow{transform:rotate(90deg);}.arch-arrow span{transform:rotate(-90deg);}.arch-rail{padding:8px 0;}.site-footer{margin-left:-24px;margin-right:-24px;}}
+  @media(max-width:500px){.footer-layout{grid-template-columns:1fr;}.footer-brand{grid-column:auto;}}
 
   /* Interactive Q&A Styles */
   .qa-presets{
@@ -202,20 +231,79 @@
   .history-item:hover{background:#101712;}
   .history-q{color:var(--text);}
   .history-time{color:var(--muted);font-size:10px;}
+
+  /* Wide editorial type + fluid viewport system */
+  :root{--sans:'Outfit',system-ui,sans-serif;--gutter:clamp(16px,3.2vw,56px);}
+  html{overflow-x:hidden;scroll-behavior:smooth;}
+  body{overflow-x:hidden;font-size:clamp(14px,0.2vw + 13px,16px);line-height:1.5;}
+  .topbar{padding:clamp(12px,1.5vw,20px) var(--gutter);}
+  .wrap{width:100%;max-width:none;margin:0;padding:clamp(22px,3vw,48px) var(--gutter) clamp(56px,7vw,104px);}
+  .grid{grid-template-columns:minmax(0,1.12fr) minmax(360px,.88fr);gap:clamp(14px,1.6vw,28px);}
+  .panel{padding:clamp(18px,2vw,30px);min-width:0;}
+  .panel h2{font-size:clamp(16px,1.1vw,21px);line-height:1.2;margin-bottom:clamp(16px,2vw,24px);letter-spacing:-.025em;}
+  .ticker-sym,.score-sym{font-size:clamp(13px,.85vw,16px);}
+  .ticker-price{font-size:clamp(14px,.9vw,17px);}
+  .result-box,.gate-log{font-size:clamp(11px,.72vw,13px);}
+  .architecture-section{margin-top:clamp(64px,9vw,144px);}
+  .architecture-section>h2{font-size:clamp(2.2rem,5vw,5.5rem);line-height:.98;max-width:12ch;}
+  .site-footer{width:100%;margin:clamp(64px,9vw,144px) 0 -60px;padding:clamp(40px,6vw,88px) var(--gutter);}
+  .topnav{padding:clamp(12px,1.5vw,20px) var(--gutter);}
+
+  @media (max-width: 980px){
+    .grid{grid-template-columns:1fr 1fr;}
+    .full-span{grid-column:1/-1;}
+    .footer-layout{grid-template-columns:1.3fr 1fr 1fr;gap:28px;}
+  }
+  @media (max-width: 760px){
+    .grid{grid-template-columns:1fr;}
+    .panel{padding:20px;}
+    .topnav .nav-status{font-size:9px;padding:6px 8px;}
+    .footer-layout{grid-template-columns:1fr 1fr;}
+    .footer-brand{grid-column:1/-1;max-width:42rem;}
+    .site-footer{margin-left:0;margin-right:0;}
+  }
+  @media (max-width: 520px){
+    .brand-sub,.nav-status{display:none;}
+    .nav-brand{font-size:12px;letter-spacing:.1em;}
+    .field-row{grid-template-columns:1fr;gap:0;}
+    .qa-input-box{display:grid;grid-template-columns:1fr;gap:8px;}
+    .qa-submit-btn{width:100%;padding:10px 16px;}
+    .qa-option-row{align-items:flex-start;gap:12px;flex-direction:column;}
+    .score-sym{width:66px;}
+    .score-val{width:92px;font-size:11px;}
+    .arch-diagram{padding:20px 14px;}
+    .footer-layout{grid-template-columns:1fr;}
+    .footer-brand{grid-column:auto;}
+  }
+  @media (max-width: 360px){
+    :root{--gutter:12px;}
+    .panel{padding:16px 14px;}
+    .qa-card{padding:13px 12px;}
+    .ticker-row{gap:8px;}
+  }
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}}
 </style>
 </head>
 <body>
 
-<div class="topbar">
+<nav class="topnav" aria-label="Primary navigation">
+  <a class="nav-brand" href="#top"><span class="nav-square"></span>TRADETUTOR</a>
+  <div class="nav-links">
+    <a href="#qaSection">Research</a>
+    <a href="#architecture-map">Architecture</a>
+    <a href="#safety">Safety</a>
+    <a href="#paper-trading">Paper trading</a>
+  </div>
+  <div class="nav-status" id="navLiveStatus">LIVE DATA</div>
   <div class="brand">
     <div class="brand-dot"></div>
     <div class="brand-name">TRADETUTOR</div>
     <div class="brand-sub">explainable · human-in-the-loop · Binance MCP</div>
   </div>
   <div class="status ok" id="connStatus">● LIVE DATA</div>
-</div>
+</nav>
 
-<div class="wrap">
+<div class="wrap" id="top">
 
   <div class="grid">
 
@@ -338,6 +426,34 @@
     </div>
 
     <!-- Confirmation Gate -->
+    <div class="panel" id="paper-trading">
+      <h2>Paper Trading <span class="tag">safe simulation</span></h2>
+      <p class="muted-line">Test a proposed trade locally without sending funds or calling a Binance write tool.</p>
+      <div class="field-row">
+        <div><label>Symbol</label><select id="paperSymbol"><option>BNBUSDT</option><option>BTCUSDT</option><option>ETHUSDT</option></select></div>
+        <div><label>Side</label><select id="paperSide"><option>BUY</option><option>SELL</option></select></div>
+      </div>
+      <div class="field-row">
+        <div><label>Quantity</label><input type="number" id="paperQty" value="0.01" step="0.0001"></div>
+        <div><label>Fill Price (optional)</label><input type="number" id="paperPrice" placeholder="Use live ticker" step="0.01"></div>
+      </div>
+      <button class="btn" onclick="submitPaperTrade()">Simulate Paper Trade</button>
+      <div id="paperResult"></div>
+    </div>
+
+    <div class="panel" id="safety">
+      <h2>Live Trading Guidelines <span class="tag">MCP safety</span></h2>
+      <div class="result-box" style="border-left-color:var(--warn);">
+        <div class="warn-line">Live trading is disabled until an authorized Binance MCP session is connected.</div>
+        <div class="muted-line" style="margin-top:8px;">1. Verify the contract, liquidity, and live market data.</div>
+        <div class="muted-line">2. Define entry, stop-loss, target, size, and maximum risk.</div>
+        <div class="muted-line">3. Run Portfolio Guardian checks.</div>
+        <div class="muted-line">4. Review the Cornell explanation and proposed order.</div>
+        <div class="muted-line">5. Confirm manually; never expose API keys in the browser.</div>
+      </div>
+    </div>
+
+    <!-- Confirmation Gate -->
     <div class="panel full-span">
       <h2>Human Confirmation Gate <span class="tag">safety proof</span></h2>
       <div class="field-row" style="grid-template-columns:1fr 1fr 1fr;">
@@ -359,6 +475,79 @@
     src/cornell.py, src/risk.py, src/portfolio_guardian.py, src/binance_mcp.py). This dashboard is a research and
     education tool — not financial advice. Nothing here places a real order.
   </div>
+
+  <section class="architecture-section" id="architecture-map">
+    <h2>Architecture</h2>
+    <p><strong>One engine, two transports.</strong> The REST dashboard and MCP runtime share the same research, explanation, risk, and execution boundaries. Every proposed order crosses the same guardian and confirmation gate, while every live number is labeled as fresh market data or simulation.</p>
+    <div class="arch-diagram">
+      <div class="arch-flow">
+        <div class="arch-column">
+          <div class="arch-box"><strong>REST dashboard</strong><span>Browser UI · live ticker · token search · paper trading</span></div>
+          <div class="arch-box"><strong>MCP host</strong><span>Authorized caller · tools/list · account context</span></div>
+        </div>
+        <div class="arch-arrow">→<span>request</span></div>
+        <div class="arch-box engine"><strong>TradeTutor Engine</strong><span>scan · explain · Cornell analysis · propose · evaluate · journal · coach</span></div>
+        <div class="arch-arrow">→<span>proposal</span></div>
+        <div class="arch-column">
+          <div class="arch-box"><strong>Portfolio Guardian</strong><span>risk limits · sizing · drawdown · kill switch</span></div>
+          <div class="arch-box"><strong>Human confirmation</strong><span>review thesis · approve explicitly · fail closed</span></div>
+        </div>
+      </div>
+      <div class="arch-rail">↓ <span>shared deterministic safety path</span> ↓</div>
+      <div class="arch-flow">
+        <div class="arch-stack">
+          <div class="arch-box"><strong>Market context</strong><span>Binance public REST · BNB Chain rank · token audit</span></div>
+        </div>
+        <div class="arch-arrow">→<span>evidence</span></div>
+        <div class="arch-box"><strong>Risk gate and router</strong><span>same checks for every path · no stale data · no unconfirmed live order</span></div>
+        <div class="arch-arrow">→<span>execution</span></div>
+        <div class="arch-column">
+          <div class="arch-box"><strong>Paper broker</strong><span>safe in-memory simulation · no funds moved</span></div>
+          <div class="arch-box"><strong>Authorized Binance MCP</strong><span>live venue only when connected and explicitly approved</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-layout">
+      <div class="footer-brand">
+        <div class="footer-mark"><span class="footer-mark-square"></span>TRADETUTOR</div>
+        <p>An explainable BNB Chain research and trade-planning workflow. Live market context, security checks, risk controls, paper simulation, and MCP-ready execution all share the same safety boundary.</p>
+      </div>
+      <div class="footer-links">
+        <h3>Product</h3>
+        <a href="#top">Launch dashboard</a>
+        <a href="#qaSection">Research workflow</a>
+        <a href="#architecture-map">Architecture</a>
+        <a href="#safety">Safety by design</a>
+      </div>
+      <div class="footer-links">
+        <h3>Resources</h3>
+        <a href="https://github.com/technea/TradeTutor_MCP" target="_blank" rel="noreferrer">README</a>
+        <a href="https://github.com/technea/TradeTutor_MCP/blob/main/REPLICATION_GUIDE.md" target="_blank" rel="noreferrer">Replication guide</a>
+        <a href="https://github.com/technea/TradeTutor_MCP/tree/main/tests" target="_blank" rel="noreferrer">Automated tests</a>
+      </div>
+      <div class="footer-links">
+        <h3>Ecosystem</h3>
+        <a href="https://www.binance.com/en/agent-os" target="_blank" rel="noreferrer">Binance Agent OS</a>
+        <a href="https://developers.binance.com/en/docs/agent-native/mcp-server/agentic" target="_blank" rel="noreferrer">Binance MCP server</a>
+        <a href="https://github.com/binance/binance-skills-hub" target="_blank" rel="noreferrer">Binance Skills Hub</a>
+        <a href="https://modelcontextprotocol.io/" target="_blank" rel="noreferrer">Model Context Protocol</a>
+      </div>
+    </div>
+    <div class="footer-disclaimer-new">TradeTutor is an educational research tool, not financial advice. Paper trading is simulated. Real execution remains disabled until an authorized MCP session is connected and the user explicitly confirms the order.</div>
+    <div class="footer-architecture" id="architecture">
+      <h2>TradeTutor architecture</h2>
+      <p><strong>Explainable trading by construction.</strong> A BNB Chain research, risk, and execution workflow powered by Binance market data and MCP boundaries. The same safety engine supports the dashboard, MCP adapters, paper trading, and CLI workflows.</p>
+    </div>
+    <div class="footer-grid">
+      <div><h3>Product</h3><a href="#top">Launch dashboard</a><a href="#how">How it works</a><a href="#architecture">Architecture</a><a href="#safety">Safety by construction</a></div>
+      <div><h3>Resources</h3><a href="https://github.com/technea/TradeTutor_MCP" target="_blank" rel="noreferrer">README</a><a href="https://github.com/technea/TradeTutor_MCP/blob/main/README.md" target="_blank" rel="noreferrer">MCP setup</a><a href="https://github.com/technea/TradeTutor_MCP/tree/main/tests" target="_blank" rel="noreferrer">Automated tests</a></div>
+      <div><h3>Ecosystem</h3><a href="https://www.binance.com/en/agent-os" target="_blank" rel="noreferrer">Binance Agent OS</a><a href="https://developers.binance.com/en/docs/agent-native/mcp-server/agentic" target="_blank" rel="noreferrer">Binance MCP server</a><a href="https://github.com/binance/binance-skills-hub" target="_blank" rel="noreferrer">Binance Skills Hub</a><a href="https://modelcontextprotocol.io/" target="_blank" rel="noreferrer">Model Context Protocol</a></div>
+    </div>
+    <div class="footer-disclaimer">TradeTutor is an educational research tool. Market data can be delayed or unavailable. Paper trading is simulated; live trading requires an authorized MCP session and explicit human confirmation.</div>
+  </footer>
 
 </div>
 
@@ -543,8 +732,10 @@ async function runLiquidityCheck(){
   box.innerHTML = `<div class="loading">Fetching live order book for ${sym}…</div>`;
 
   try{
-    const res = await fetch(`/api/depth?symbol=${sym}`, { cache:'no-store' });
-    const book = await res.json();
+    const book = await fetchLiveJson(`/api/depth?symbol=${sym}`);
+    if(!Array.isArray(book.bids) || !Array.isArray(book.asks) || !book.bids.length || !book.asks.length){
+      throw new Error('Live order book response did not contain bid and ask levels');
+    }
     const bidDepth = book.bids.reduce((sum,[p,q])=> sum + parseFloat(p)*parseFloat(q), 0);
     const askDepth = book.asks.reduce((sum,[p,q])=> sum + parseFloat(p)*parseFloat(q), 0);
     const bestBid = parseFloat(book.bids[0][0]), bestAsk = parseFloat(book.asks[0][0]);
@@ -639,6 +830,7 @@ async function submitQuestion(){
     statusEl.className = 'status err';
     renderQaResponse(liveErrorResponse(query, error));
   }
+
 }
 
 function clearQaHistory(){
@@ -720,6 +912,22 @@ async function processQaQuery(query, attachContext){
 
   // 6. Default Educational Q&A Responder
   return answerGeneralQuery(query, q);
+}
+
+async function submitPaperTrade(){
+  const symbol = document.getElementById('paperSymbol').value;
+  const side = document.getElementById('paperSide').value;
+  const quantity = Number(document.getElementById('paperQty').value);
+  const priceInput = Number(document.getElementById('paperPrice').value);
+  const box = document.getElementById('paperResult');
+  if(!Number.isFinite(quantity) || quantity <= 0){ box.innerHTML = '<div class="result-box block">Enter a positive paper quantity.</div>'; return; }
+  box.innerHTML = '<div class="loading">Preparing paper fill…</div>';
+  try {
+    const ticker = await fetchLiveJson(`/api/ticker?symbol=${symbol}`);
+    const price = Number.isFinite(priceInput) && priceInput > 0 ? priceInput : Number(ticker.lastPrice);
+    const notional = quantity * price;
+    box.innerHTML = `<div class="result-box allow"><strong>PAPER TRADE RECORDED</strong><br>${side} ${quantity} ${symbol} @ $${price.toFixed(2)}<br>Simulated notional: $${notional.toFixed(2)}<br><span class="muted-line">No real order was sent. This is an in-memory simulation.</span></div>`;
+  } catch(e) { box.innerHTML = `<div class="result-box block">Paper trade could not obtain a live fill price: ${e.message}</div>`; }
 }
 
 function evaluateTradeThesis(query, numbers, q){
