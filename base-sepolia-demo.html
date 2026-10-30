@@ -114,7 +114,7 @@ async function send(){
  const data='0xa9059cbb'+pad32(proposal.to)+proposal.units.toString(16).padStart(64,'0');
  $('send').disabled=true;
  const hash=await window.ethereum.request({method:'eth_sendTransaction',params:[{from:proposal.account,to:USDC,data,value:'0x0'}]});
- setStatus('Wallet submitted the testnet transaction. Hash: '+hash+' · <https://sepolia.basescan.org/tx/'+hash+'>','ok');
+ setStatus('Wallet submitted the testnet transaction. Hash: '+hash+' · Explorer: https://sepolia.basescan.org/tx/'+hash,'ok');
  proposal=null;
 }
 function guard(fn){return async()=>{try{await fn();}catch(error){setStatus(error?.message||'Action failed.','bad');if($('send'))$('send').disabled=true;}};}
