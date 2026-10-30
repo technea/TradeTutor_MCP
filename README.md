@@ -48,7 +48,7 @@ It combines **MCP**, structured **Cornell Notes**, transparent risk calculations
 - 🎓 **Post-trade coach** — compares the original thesis with the realized outcome and produces lessons.
 - 🧪 **Paper trading** — safe in-memory simulation that never calls Binance write tools.
 - 🔍 **Capability discovery** — reports available MCP capabilities instead of assuming permissions.
-- 🔵 **Base token research (in progress)** — chain-aware token search and contract-audit requests for Base (8453), alongside supported BNB Chain, Ethereum, and Solana lookups.
+- 🔵 **Base integration (in progress)** — chain-aware token search and contract-audit routing for Base (8453), plus user-initiated, read-only injected-wallet connection and network switching. No signing or transactions yet.
 - 🔐 **Credential-safe design** — no Binance API keys, signed REST order implementation, seed phrases, or private keys are stored in this repository.
 
 ## 🧠 Cornell Trading Framework
@@ -273,7 +273,8 @@ The project is designed to show that an agent can be useful **without hiding its
 - [ ] Connect final live MCP tool caller in the target runtime
 - [x] Base chain ID recognition for token audits (8453)
 - [x] Chain-aware token search for Base, BNB Chain, Ethereum, and Solana (feature branch; requires live API verification)
-- [ ] Base wallet connection and user-authorized transaction flow
+- [x] Read-only injected-wallet connection and Base mainnet network switching
+- [ ] User-authorized transaction flow
 - [ ] Base USDC transaction demo with explicit policy checks
 - [ ] Builder Codes integration and onchain attribution
 - [ ] Demo dashboard
