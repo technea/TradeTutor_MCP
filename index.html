@@ -1186,8 +1186,8 @@ async function answerTokenSearchQuery(query){
   const chainLabels = { '56': 'BNB Chain', '8453': 'Base', '1': 'Ethereum', 'CT_501': 'Solana' };
   const chainLabel = chainLabels[chainId] || 'selected chain';
   const keyword = query
-    .replace(/\\b(on|for|in)\\s+(base|bnb chain|bsc|ethereum|eth chain|solana)\\b/ig, '')
-    .replace(/\\b(base|bnb chain|bsc|ethereum|eth chain|solana)\\b/ig, '')
+    .replace(/\b(on|for|in)\s+(base|bnb chain|bsc|ethereum|eth chain|solana)\b/ig, '')
+    .replace(/\b(base|bnb chain|bsc|ethereum|eth chain|solana)\b/ig, '')
     .trim() || query;
   const json = await fetchLiveJson('/api/token-search', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
