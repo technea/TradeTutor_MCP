@@ -1182,25 +1182,32 @@ async function answerLiquidityQuery(query, q){
 
 async function answerTokenSearchQuery(query){
   const requestMarker = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const chainId = chainFromQuestion(query.toLowerCase());
+  const chainLabels = { '56': 'BNB Chain', '8453': 'Base', '1': 'Ethereum', 'CT_501': 'Solana' };
+  const chainLabel = chainLabels[chainId] || 'selected chain';
+  const keyword = query
+    .replace(/\\b(on|for|in)\\s+(base|bnb chain|bsc|ethereum|eth chain|solana)\\b/ig, '')
+    .replace(/\\b(base|bnb chain|bsc|ethereum|eth chain|solana)\\b/ig, '')
+    .trim() || query;
   const json = await fetchLiveJson('/api/token-search', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ keyword: query, chainIds: '56' })
+    body: JSON.stringify({ keyword, chainIds: chainId })
   });
   const tokens = Array.isArray(json?.data) ? json.data.slice(0, 5) : [];
-  if(!tokens.length) throw new Error(`No BNB Chain token matches found for "${query}"`);
+  if(!tokens.length) throw new Error(`No ${chainLabel} token matches found for "${keyword}"`);
   const fetchedAt = new Date().toLocaleString();
   return {
-    category: 'market', badgeClass: 'badge-market', badgeText: 'Live BNB Chain Token Search', question: query,
-    directAnswer: `Fresh BNB Chain token search for “${query}”, fetched at ${fetchedAt}. Request marker: ${requestMarker}.`,
+    category: 'market', badgeClass: 'badge-market', badgeText: `Live ${chainLabel} Token Search`, question: query,
+    directAnswer: `Fresh ${chainLabel} token search for “${keyword}”, fetched at ${fetchedAt}. Request marker: ${requestMarker}.`,
     cornell: {
-      question: `Which BNB Chain tokens match “${query}”?`,
-      cues: tokens.map((token, index) => `#${index + 1} ${token.symbol} (${token.name}) — $${fmtUsd(token.price)} | 24h ${Number(token.percentChange24h || 0).toFixed(2)}% | liquidity $${fmtUsd(token.liquidity)} | volume $${fmtUsd(token.volume24h)}`),
-      notes: ['Search is limited to BNB Chain (chain 56).', 'Select the contract address before trading; similarly named tokens may exist.'],
+      question: `Which ${chainLabel} tokens match “${keyword}”?`,
+      cues: tokens.map((token, index) => `#${index + 1} ${token.symbol} (${token.name}) — ${fmtUsd(token.price)} | 24h ${Number(token.percentChange24h || 0).toFixed(2)}% | liquidity ${fmtUsd(token.liquidity)} | volume ${fmtUsd(token.volume24h)}`),
+      notes: [`Search is limited to ${chainLabel} (chain ID ${chainId}).`, 'Select the exact contract address before trading; similarly named tokens may exist.'],
       risk: ['A matching symbol/name is not proof of an official token.', 'Check contract security and liquidity before trading.'],
       decision: 'live_token_search_received',
-      summary: `Live BNB Chain results were returned at ${fetchedAt}; no previous search result was reused.`
+      summary: `Live ${chainLabel} results were returned at ${fetchedAt}; no previous response was reused.`
     },
-    followups: [`${query} liquidity on BNB Chain`, `Show BNB Chain trending tokens`, `Is ${query} safe?`]
+    followups: [`${keyword} liquidity on ${chainLabel}`, `Show ${chainLabel} trending tokens`, `Is ${keyword} safe on ${chainLabel}?`]
   };
 }
 
