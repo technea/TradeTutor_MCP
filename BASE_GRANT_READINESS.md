@@ -14,10 +14,11 @@ The Base-focused product direction is to make TradeTutor useful for people disco
 - Portfolio Guardian checks configured trade-risk, daily-loss, open-position, and kill-switch limits in the Python workflow.
 - Token audit routing already recognizes Base chain ID 8453.
 - This feature branch adds chain-aware token search for Base (8453), BNB Chain (56), Ethereum (1), and Solana (CT_501), plus API validation of supported chain IDs.
+- This feature branch adds an injected-wallet connection flow that requests accounts only after a user click and switches the wallet to Base mainnet (8453). It is read-only: it does not request signatures or submit transactions.
 
 ## Not yet implemented — do not claim as completed
 
-- Base wallet connection or smart-wallet deployment.
+- Transaction signing or smart-wallet deployment. The current injected-wallet connection is read-only.
 - USDC transfers or swaps on Base.
 - Onchain execution controlled by Portfolio Guardian.
 - Builder Codes integration or attributable Base activity.
@@ -34,7 +35,7 @@ These must be implemented and tested before being described as live capabilities
 - Add tests for chain selection and unsupported-chain rejection.
 
 ### Milestone 2 — User-authorized Base wallet
-- Add Base wallet connection using supported Base wallet tooling.
+- Extend the current injected-wallet connection or adopt supported Base wallet tooling.
 - Read wallet address and Base network state.
 - Keep private keys and signing outside TradeTutor's backend.
 - Require clear user confirmation for every onchain action.
