@@ -1197,6 +1197,8 @@ async function answerTokenSearchQuery(query){
   const keyword = query
     .replace(/\b(on|for|in)\s+(base|bnb chain|bsc|ethereum|eth chain|solana)\b/ig, '')
     .replace(/\b(base|bnb chain|bsc|ethereum|eth chain|solana)\b/ig, '')
+    .replace(/^\s*(find|search|look up|show me|check)\s+(token\s+)?/i, '')
+    .replace(/[?.,!]+$/g, '')
     .trim() || query;
   const json = await fetchLiveJson('/api/token-search', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
