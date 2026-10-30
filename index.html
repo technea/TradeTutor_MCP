@@ -151,6 +151,13 @@
   .topnav{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 24px;border-bottom:1px solid #202938;background:#090C12E8;backdrop-filter:blur(14px);}
   .topnav .brand,.topnav .status{display:none;}
   .nav-brand{display:flex;align-items:center;gap:10px;color:#F2F5FA;text-decoration:none;font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.13em;}.nav-square{width:18px;height:18px;border:2px solid var(--warn);box-shadow:inset 0 0 0 3px #090C12;}.nav-links{display:flex;align-items:center;gap:24px;}.nav-links a{color:#ABB7C8;text-decoration:none;font:11px var(--mono);transition:color .2s ease;}.nav-links a:hover{color:#F1C400;}.nav-status{font:10px var(--mono);color:var(--accent);border:1px solid #1B6448;padding:7px 10px;}
+  .wallet-connect{font:11px var(--mono);font-weight:700;color:#07130D;background:#00FF88;border:0;border-radius:6px;padding:9px 12px;cursor:pointer;white-space:nowrap;}
+  .wallet-connect:hover{background:#45FFA8;}
+  .wallet-connect:disabled{opacity:.65;cursor:wait;}
+  .wallet-connect.connected{background:#173B2A;color:#8BFFC1;border:1px solid #1B6448;}
+  .wallet-state{font:10px var(--mono);color:#A8B6C8;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  @media(max-width:800px){.wallet-state{display:none;}.wallet-connect{font-size:10px;padding:8px 9px;}}
+
   .site-footer>.footer-architecture,.site-footer>.footer-grid,.site-footer>.footer-disclaimer{display:none;}
   @media(max-width:800px){.topnav{padding:13px 16px;}.nav-links{display:none;}.footer-layout{grid-template-columns:1fr 1fr;gap:28px;}.footer-brand{grid-column:1/-1;}.arch-flow{grid-template-columns:1fr;}.arch-arrow{transform:rotate(90deg);}.arch-arrow span{transform:rotate(-90deg);}.arch-rail{padding:8px 0;}.site-footer{margin-left:-24px;margin-right:-24px;}}
   @media(max-width:500px){.footer-layout{grid-template-columns:1fr;}.footer-brand{grid-column:auto;}}
@@ -331,6 +338,8 @@
     <a href="#safety">Safety</a>
     <a href="#paper-trading">Paper trading</a>
   </div>
+  <button class="wallet-connect" id="connectBaseWallet" type="button" onclick="connectBaseWallet()">Connect Base Wallet</button>
+  <div class="wallet-state" id="baseWalletState" aria-live="polite">Wallet not connected</div>
   <div class="nav-status" id="navLiveStatus">LIVE DATA</div>
   <div class="brand">
     <div class="brand-dot"></div>
@@ -1182,25 +1191,34 @@ async function answerLiquidityQuery(query, q){
 
 async function answerTokenSearchQuery(query){
   const requestMarker = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const chainId = chainFromQuestion(query.toLowerCase());
+  const chainLabels = { '56': 'BNB Chain', '8453': 'Base', '1': 'Ethereum', 'CT_501': 'Solana' };
+  const chainLabel = chainLabels[chainId] || 'selected chain';
+  const keyword = query
+    .replace(/\b(on|for|in)\s+(base|bnb chain|bsc|ethereum|eth chain|solana)\b/ig, '')
+    .replace(/\b(base|bnb chain|bsc|ethereum|eth chain|solana)\b/ig, '')
+    .replace(/^\s*(find|search|look up|show me|check)\s+(token\s+)?/i, '')
+    .replace(/[?.,!]+$/g, '')
+    .trim() || query;
   const json = await fetchLiveJson('/api/token-search', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ keyword: query, chainIds: '56' })
+    body: JSON.stringify({ keyword, chainIds: chainId })
   });
   const tokens = Array.isArray(json?.data) ? json.data.slice(0, 5) : [];
-  if(!tokens.length) throw new Error(`No BNB Chain token matches found for "${query}"`);
+  if(!tokens.length) throw new Error(`No ${chainLabel} token matches found for "${keyword}"`);
   const fetchedAt = new Date().toLocaleString();
   return {
-    category: 'market', badgeClass: 'badge-market', badgeText: 'Live BNB Chain Token Search', question: query,
-    directAnswer: `Fresh BNB Chain token search for “${query}”, fetched at ${fetchedAt}. Request marker: ${requestMarker}.`,
+    category: 'market', badgeClass: 'badge-market', badgeText: `Live ${chainLabel} Token Search`, question: query,
+    directAnswer: `Fresh ${chainLabel} token search for “${keyword}”, fetched at ${fetchedAt}. Request marker: ${requestMarker}.`,
     cornell: {
-      question: `Which BNB Chain tokens match “${query}”?`,
-      cues: tokens.map((token, index) => `#${index + 1} ${token.symbol} (${token.name}) — $${fmtUsd(token.price)} | 24h ${Number(token.percentChange24h || 0).toFixed(2)}% | liquidity $${fmtUsd(token.liquidity)} | volume $${fmtUsd(token.volume24h)}`),
-      notes: ['Search is limited to BNB Chain (chain 56).', 'Select the contract address before trading; similarly named tokens may exist.'],
+      question: `Which ${chainLabel} tokens match “${keyword}”?`,
+      cues: tokens.map((token, index) => `#${index + 1} ${token.symbol} (${token.name}) — ${fmtUsd(token.price)} | 24h ${Number(token.percentChange24h || 0).toFixed(2)}% | liquidity ${fmtUsd(token.liquidity)} | volume ${fmtUsd(token.volume24h)}`),
+      notes: [`Search is limited to ${chainLabel} (chain ID ${chainId}).`, 'Select the exact contract address before trading; similarly named tokens may exist.'],
       risk: ['A matching symbol/name is not proof of an official token.', 'Check contract security and liquidity before trading.'],
       decision: 'live_token_search_received',
-      summary: `Live BNB Chain results were returned at ${fetchedAt}; no previous search result was reused.`
+      summary: `Live ${chainLabel} results were returned at ${fetchedAt}; no previous response was reused.`
     },
-    followups: [`${query} liquidity on BNB Chain`, `Show BNB Chain trending tokens`, `Is ${query} safe?`]
+    followups: [`${keyword} liquidity on ${chainLabel}`, `Show ${chainLabel} trending tokens`, `Is ${keyword} safe on ${chainLabel}?`]
   };
 }
 
@@ -1402,6 +1420,81 @@ function renderQaResponse(res){
       </div>
     </div>
   `;
+}
+
+const BASE_CHAIN_ID = '0x2105';
+
+function shortWalletAddress(address){
+  return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : '';
+}
+
+async function connectBaseWallet(){
+  const button = document.getElementById('connectBaseWallet');
+  const state = document.getElementById('baseWalletState');
+  if(!window.ethereum){
+    state.textContent = 'No browser wallet detected';
+    return;
+  }
+  button.disabled = true;
+  button.textContent = 'Connecting…';
+  try{
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if(!accounts?.length) throw new Error('Wallet did not return an account.');
+    let chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if(chainId !== BASE_CHAIN_ID){
+      try{
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: BASE_CHAIN_ID }]
+        });
+      }catch(switchError){
+        if(switchError?.code !== 4902) throw switchError;
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: BASE_CHAIN_ID,
+            chainName: 'Base',
+            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+            rpcUrls: ['https://mainnet.base.org'],
+            blockExplorerUrls: ['https://basescan.org']
+          }]
+        });
+      }
+      chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    }
+    if(chainId !== BASE_CHAIN_ID){
+      state.textContent = 'Switch wallet to Base';
+      throw new Error('Wallet is not connected to Base mainnet.');
+    }
+    state.textContent = `Base · ${shortWalletAddress(accounts[0])}`;
+    button.textContent = 'Wallet Connected';
+    button.classList.add('connected');
+  }catch(error){
+    state.textContent = error?.message || 'Wallet connection failed';
+    button.textContent = 'Connect Base Wallet';
+    button.classList.remove('connected');
+  }finally{
+    button.disabled = false;
+  }
+}
+
+if(window.ethereum?.on){
+  window.ethereum.on('accountsChanged', accounts => {
+    const state = document.getElementById('baseWalletState');
+    const button = document.getElementById('connectBaseWallet');
+    if(!accounts?.length){
+      state.textContent = 'Wallet not connected';
+      button.textContent = 'Connect Base Wallet';
+      button.classList.remove('connected');
+    }else{
+      state.textContent = `Wallet · ${shortWalletAddress(accounts[0])}`;
+    }
+  });
+  window.ethereum.on('chainChanged', chainId => {
+    const state = document.getElementById('baseWalletState');
+    if(chainId !== BASE_CHAIN_ID) state.textContent = 'Switch wallet to Base';
+    else state.textContent = 'Base network selected';
+  });
 }
 
 fetchTickers();
