@@ -151,6 +151,13 @@
   .topnav{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 24px;border-bottom:1px solid #202938;background:#090C12E8;backdrop-filter:blur(14px);}
   .topnav .brand,.topnav .status{display:none;}
   .nav-brand{display:flex;align-items:center;gap:10px;color:#F2F5FA;text-decoration:none;font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.13em;}.nav-square{width:18px;height:18px;border:2px solid var(--warn);box-shadow:inset 0 0 0 3px #090C12;}.nav-links{display:flex;align-items:center;gap:24px;}.nav-links a{color:#ABB7C8;text-decoration:none;font:11px var(--mono);transition:color .2s ease;}.nav-links a:hover{color:#F1C400;}.nav-status{font:10px var(--mono);color:var(--accent);border:1px solid #1B6448;padding:7px 10px;}
+  .wallet-connect{font:11px var(--mono);font-weight:700;color:#07130D;background:#00FF88;border:0;border-radius:6px;padding:9px 12px;cursor:pointer;white-space:nowrap;}
+  .wallet-connect:hover{background:#45FFA8;}
+  .wallet-connect:disabled{opacity:.65;cursor:wait;}
+  .wallet-connect.connected{background:#173B2A;color:#8BFFC1;border:1px solid #1B6448;}
+  .wallet-state{font:10px var(--mono);color:#A8B6C8;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  @media(max-width:800px){.wallet-state{display:none;}.wallet-connect{font-size:10px;padding:8px 9px;}}
+
   .site-footer>.footer-architecture,.site-footer>.footer-grid,.site-footer>.footer-disclaimer{display:none;}
   @media(max-width:800px){.topnav{padding:13px 16px;}.nav-links{display:none;}.footer-layout{grid-template-columns:1fr 1fr;gap:28px;}.footer-brand{grid-column:1/-1;}.arch-flow{grid-template-columns:1fr;}.arch-arrow{transform:rotate(90deg);}.arch-arrow span{transform:rotate(-90deg);}.arch-rail{padding:8px 0;}.site-footer{margin-left:-24px;margin-right:-24px;}}
   @media(max-width:500px){.footer-layout{grid-template-columns:1fr;}.footer-brand{grid-column:auto;}}
@@ -331,6 +338,8 @@
     <a href="#safety">Safety</a>
     <a href="#paper-trading">Paper trading</a>
   </div>
+  <button class="wallet-connect" id="connectBaseWallet" type="button" onclick="connectBaseWallet()">Connect Base Wallet</button>
+  <div class="wallet-state" id="baseWalletState" aria-live="polite">Wallet not connected</div>
   <div class="nav-status" id="navLiveStatus">LIVE DATA</div>
   <div class="brand">
     <div class="brand-dot"></div>
@@ -1409,6 +1418,81 @@ function renderQaResponse(res){
       </div>
     </div>
   `;
+}
+
+const BASE_CHAIN_ID = '0x2105';
+
+function shortWalletAddress(address){
+  return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : '';
+}
+
+async function connectBaseWallet(){
+  const button = document.getElementById('connectBaseWallet');
+  const state = document.getElementById('baseWalletState');
+  if(!window.ethereum){
+    state.textContent = 'No browser wallet detected';
+    return;
+  }
+  button.disabled = true;
+  button.textContent = 'Connecting…';
+  try{
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if(!accounts?.length) throw new Error('Wallet did not return an account.');
+    let chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if(chainId !== BASE_CHAIN_ID){
+      try{
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: BASE_CHAIN_ID }]
+        });
+      }catch(switchError){
+        if(switchError?.code !== 4902) throw switchError;
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: BASE_CHAIN_ID,
+            chainName: 'Base',
+            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+            rpcUrls: ['https://mainnet.base.org'],
+            blockExplorerUrls: ['https://basescan.org']
+          }]
+        });
+      }
+      chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    }
+    if(chainId !== BASE_CHAIN_ID){
+      state.textContent = 'Switch wallet to Base';
+      throw new Error('Wallet is not connected to Base mainnet.');
+    }
+    state.textContent = `Base · ${shortWalletAddress(accounts[0])}`;
+    button.textContent = 'Wallet Connected';
+    button.classList.add('connected');
+  }catch(error){
+    state.textContent = error?.message || 'Wallet connection failed';
+    button.textContent = 'Connect Base Wallet';
+    button.classList.remove('connected');
+  }finally{
+    button.disabled = false;
+  }
+}
+
+if(window.ethereum?.on){
+  window.ethereum.on('accountsChanged', accounts => {
+    const state = document.getElementById('baseWalletState');
+    const button = document.getElementById('connectBaseWallet');
+    if(!accounts?.length){
+      state.textContent = 'Wallet not connected';
+      button.textContent = 'Connect Base Wallet';
+      button.classList.remove('connected');
+    }else{
+      state.textContent = `Wallet · ${shortWalletAddress(accounts[0])}`;
+    }
+  });
+  window.ethereum.on('chainChanged', chainId => {
+    const state = document.getElementById('baseWalletState');
+    if(chainId !== BASE_CHAIN_ID) state.textContent = 'Switch wallet to Base';
+    else state.textContent = 'Base network selected';
+  });
 }
 
 fetchTickers();
