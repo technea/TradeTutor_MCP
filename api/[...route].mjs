@@ -42,8 +42,10 @@ export default async function handler(req, res) {
     }
     if (req.method === 'POST' && path === '/api/token-search') {
       const { keyword, chainIds = '56' } = await readJson(req);
+      const supportedChains = new Set(['56', '8453', '1', 'CT_501']);
       if (typeof keyword !== 'string' || !keyword.trim() || keyword.length > 80) return send(res, 400, { error: 'A token keyword of 1-80 characters is required.' });
-      return send(res, 200, await tokenInfoSkill.call(tokenInfoSkill.COMMANDS.search({ keyword: keyword.trim(), chainIds })));
+      if (!supportedChains.has(String(chainIds))) return send(res, 400, { error: 'Unsupported chain. Use BNB Chain (56), Base (8453), Ethereum (1), or Solana (CT_501).' });
+      return send(res, 200, await tokenInfoSkill.call(tokenInfoSkill.COMMANDS.search({ keyword: keyword.trim(), chainIds: String(chainIds) })));
     }
     if (req.method === 'POST' && path === '/api/token-audit') {
       const { chainId = '56', contractAddress } = await readJson(req);
